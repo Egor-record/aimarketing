@@ -19,7 +19,7 @@ const initTelegramBot = () => {
                     isAiMarketing: true,
                     role: 1,
                     createData: new Date(),
-                    isPaid: true,
+                    isPaid: false,
                     isUsingOwnKey: true,
                     currentModel: 1
                 })
