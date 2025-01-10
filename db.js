@@ -24,35 +24,71 @@ const connectDB = async () => {
         console.error('Error connecting to MongoDB:', err);
         process.exit(1);
     } 
-}  
+}
 
-const isUserExists = async (telegramID) => {
+const getUser = async (telegramID) => {
     if (!db) { return }
     let collection = await db.collection("Users");
     const user = await collection.findOne({ telegramID: telegramID });
+    return user;
+}
+
+const isUserExists = async (telegramID) => {
+    const user = await getUser(telegramID);
     return !!user;
 }
 
 const isUserPaid = async (telegramID) => {
-    if (!db) { return }
-    let collection = await db.collection("Users");
-    const user = await collection.findOne({ telegramID: telegramID, isPaid: true });
-    return !!user;
+    const user = await getUser(telegramID);
+
+    if (!user || !user.paidUntil) {
+        return false;
+    }
+
+    const now = new Date();
+    const paidUntil = new Date(user.paidUntil);
+    return paidUntil > now;
+}
+
+const isUserAdmin = async (telegramID) => {
+    const user = await getUser(telegramID);
+    if (!user) {
+        return false;
+    }
+    return user.role === 1 || user.role === 2
+}
+
+const isUserSuperAdmin = async (telegramID) => {
+    const user = await getUser(telegramID);
+    if (!user) {
+        return false;
+    }
+    return user.role === 1
+}
+
+const isUserHasTokens = async (telegramID) => {
+    const user =  await getUser(telegramID);
+    if (!user || !user.tokens) {
+        return false;
+    }
+    return tokens > 0
 }
 
 const createUser = async (user) => {
     if (!db) { return false }
     let collection = await db.collection("Users");
-    const { chatID, telegramID, isAiMarketing, role, createData, isPaid, isUsingOwnKey, currentModel } = user;
+    const { chatID, telegramID, isAiMarketing, role, createData, paidUntil, isUsingOwnKey, currentModel, temperature, tokens } = user;
     const data = {
         chatID,
         telegramID,
         isAiMarketing,
         role,
         createData,
-        isPaid,
+        paidUntil,
         isUsingOwnKey,
-        currentModel
+        currentModel,
+        temperature,
+        tokens
     };
     try {
         let result = await collection.insertOne(data);
@@ -69,4 +105,4 @@ process.on('SIGINT', async () => {
     process.exit(0);
 });
 
-module.exports = { connectDB, createUser, isUserExists, isUserPaid };
+module.exports = { connectDB, createUser, isUserExists, isUserPaid, isUserHasTokens, isUserAdmin, isUserSuperAdmin };

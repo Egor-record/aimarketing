@@ -2,7 +2,7 @@ require('dotenv').config();
 const fetch = require('node-fetch');
 const TelegramBot = require('node-telegram-bot-api');
 const { generateMsgToAI, downloadImg, generateAndSendImgToAI, deleteImg } = require('./bot.js');
-const { createUser, isUserExists, isUserPaid } = require('./db.js')
+const { createUser, isUserExists, isUserPaid, isUserHasTokens} = require('./db.js')
 
 
 const initTelegramBot = () => {
@@ -17,19 +17,21 @@ const initTelegramBot = () => {
                     chatID: msg.chat.id,
                     telegramID: msg.chat.username,
                     isAiMarketing: true,
-                    role: 1,
+                    role: 3,
                     createData: new Date(),
-                    isPaid: false,
-                    isUsingOwnKey: true,
-                    currentModel: 1
+                    paidUntil: new Date(),
+                    isUsingOwnKey: false,
+                    currentModel: 1,
+                    temperature: 0,
+                    tokens: 0,
                 })
             }
             if (msg.text === '/start') {
                 bot.sendMessage(chatId, "Добро пожаловать!");
             } else {
-                const isAllowed = await isUserPaid(msg.chat.username);
+                const isAllowed = await isUserPaid(msg.chat.username) && await isUserHasTokens(msg.chat.username);
                 if (!isAllowed) {
-                    bot.sendMessage(chatId, "Кончились токены!");
+                    bot.sendMessage(chatId, "Кончились токены или подписка!");
                 }
                 const response = await generateMsgToAI(msg.text);
                 if (response) {
@@ -43,6 +45,11 @@ const initTelegramBot = () => {
         const downloadURL = await getUrlToPick(msg)
         const fileId = msg.photo[msg.photo.length - 1].file_id;
         const chatId = msg.chat.id;
+        const isAllowed = await isUserPaid(msg.chat.username) && await isUserHasTokens(msg.chat.username);
+        
+        if (!isAllowed) {
+            return bot.sendMessage(chatId, "Кончились токены или подписка!");
+        }
         downloadImg(downloadURL, fileId, async () => {
             try {
                 const response = await generateAndSendImgToAI(fileId, { userID:chatId, msgText: msg.text} )
