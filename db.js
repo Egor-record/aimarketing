@@ -1,7 +1,7 @@
 require('dotenv').config();
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const uri = process.env.DB_URI;
-
+const isProd = process.env.NODE_ENV === 'production';
 const client = new MongoClient(uri, {
     serverApi: {
         version: ServerApiVersion.v1,
@@ -16,7 +16,9 @@ const connectDB = async () => {
     try {
         // Connect the client to the server	(optional starting in v4.7)
         await client.connect();
-        db = client.db("Users")
+    
+        const dbName = isProd ? 'Users' : 'Users_dev';
+        db = client.db(dbName)
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
@@ -26,6 +28,11 @@ const connectDB = async () => {
     } 
 }
 
+/** 
+ * Return User from database.
+ * @param {number} telegramID 
+ * @returns {User}  
+ */
 const getUser = async (telegramID) => {
     if (!db) { return }
     let collection = await db.collection("Users");
@@ -33,62 +40,20 @@ const getUser = async (telegramID) => {
     return user;
 }
 
-const isUserExists = async (telegramID) => {
-    const user = await getUser(telegramID);
-    return !!user;
-}
-
-const isUserPaid = async (telegramID) => {
-    const user = await getUser(telegramID);
-
-    if (!user || !user.paidUntil) {
-        return false;
-    }
-
-    const now = new Date();
-    const paidUntil = new Date(user.paidUntil);
-    return paidUntil > now;
-}
-
-const isUserAdmin = async (telegramID) => {
-    const user = await getUser(telegramID);
-    if (!user) {
-        return false;
-    }
-    return user.role === 1 || user.role === 2
-}
-
-const isUserSuperAdmin = async (telegramID) => {
-    const user = await getUser(telegramID);
-    if (!user) {
-        return false;
-    }
-    return user.role === 1
-}
-
-const isUserHasTokens = async (telegramID) => {
-    const user =  await getUser(telegramID);
-    if (!user || !user.tokens) {
-        return false;
-    }
-    return tokens > 0
-}
-
+/** 
+ * Create a new user.
+ * @param {User} user 
+ */
 const createUser = async (user) => {
     if (!db) { return false }
     let collection = await db.collection("Users");
-    const { chatID, telegramID, isAiMarketing, role, createData, paidUntil, isUsingOwnKey, currentModel, temperature, tokens } = user;
+    const { telegramID, role, aiMarketing, createData, aibot } = user;
     const data = {
-        chatID,
         telegramID,
-        isAiMarketing,
         role,
+        aiMarketing,
         createData,
-        paidUntil,
-        isUsingOwnKey,
-        currentModel,
-        temperature,
-        tokens
+        aibot
     };
     try {
         let result = await collection.insertOne(data);
@@ -99,10 +64,26 @@ const createUser = async (user) => {
     }
 }
 
+const addServiceToUser = async (telegramID, service, val) => {
+    const user = await getUser(telegramID);
+    if (!user[service]) {
+        const result = await collection.updateOne(
+            { telegramID },
+            { $set: { [service]: val } }
+        );
+        console.log('User updated:', result.modifiedCount > 0);
+    } 
+}
+
+const isUserHasService = async (telegramID, service) => {
+    const user = await getUser(telegramID);
+    return !!user[service]
+}
+
 process.on('SIGINT', async () => {
     console.log('Closing MongoDB connection');
     await client.close();
     process.exit(0);
 });
 
-module.exports = { connectDB, createUser, isUserExists, isUserPaid, isUserHasTokens, isUserAdmin, isUserSuperAdmin };
+module.exports = { connectDB, createUser, addServiceToUser, isUserHasService, getUser };

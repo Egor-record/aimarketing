@@ -2,7 +2,8 @@ require('dotenv').config();
 const fetch = require('node-fetch');
 const TelegramBot = require('node-telegram-bot-api');
 const { generateMsgToAI, downloadImg, generateAndSendImgToAI, deleteImg } = require('./bot.js');
-const { createUser, isUserExists, isUserPaid, isUserHasTokens} = require('./db.js')
+const { getUser, createUser, addServiceToUser} = require('./db.js')
+const { isUserPaid, isUserHasTokens, isUserSuperAdmin } = require('./user.js')
 
 
 const initTelegramBot = () => {
@@ -11,56 +12,68 @@ const initTelegramBot = () => {
     bot.on('message', async (msg) => {
         const chatId = msg.chat.id;
         if (msg.text) {
-            const isUsrExists = await isUserExists(msg.chat.username);
-            if (!isUsrExists) {
+
+            const user = await getUser(msg.chat.username);
+            const aiMarketingData = {
+                chatID: msg.chat.id,
+                paidUntil: new Date(),
+                isUsingOwnKey: false,
+                currentModel: 1,
+                temperature: 0,
+                tokens: 0,
+                payments: []
+            }
+            if (!user) {
                 await createUser({
-                    chatID: msg.chat.id,
                     telegramID: msg.chat.username,
-                    isAiMarketing: true,
                     role: 3,
                     createData: new Date(),
-                    paidUntil: new Date(),
-                    isUsingOwnKey: false,
-                    currentModel: 1,
-                    temperature: 0,
-                    tokens: 0,
+                    aiMarketing: aiMarketingData
                 })
+            } else if (!user.aiMarketing){
+                await addServiceToUser(msg.chat.username, "aiMarketing", aiMarketingData)
             }
+             
             if (msg.text === '/start') {
                 bot.sendMessage(chatId, "Добро пожаловать!");
             } else {
-                const isAllowed = await isUserPaid(msg.chat.username) && await isUserHasTokens(msg.chat.username);
+                const isAllowed = (await isUserPaid(msg.chat.username, "aiMarketing") && await isUserHasTokens(msg.chat.username, "aiMarketing")) || isUserSuperAdmin(user);
+
                 if (!isAllowed) {
                     bot.sendMessage(chatId, "Кончились токены или подписка!");
-                }
-                const response = await generateMsgToAI(msg.text);
-                if (response) {
-                    bot.sendMessage(chatId, response);
+                } else {
+                    const response = await generateMsgToAI(msg.text);
+                    if (response) {
+                        bot.sendMessage(chatId, response);
+                    }
                 }
             }
         }
     });
 
     bot.on('photo', async (msg) => {
+        await createNewUserOrService(msg, "aiMarketing")
         const downloadURL = await getUrlToPick(msg)
         const fileId = msg.photo[msg.photo.length - 1].file_id;
         const chatId = msg.chat.id;
-        const isAllowed = await isUserPaid(msg.chat.username) && await isUserHasTokens(msg.chat.username);
+
+        const isAllowed = await isUserPaid(msg.chat.username, "aiMarketing") && await isUserHasTokens(msg.chat.username, "aiMarketing");
         
         if (!isAllowed) {
             return bot.sendMessage(chatId, "Кончились токены или подписка!");
-        }
-        downloadImg(downloadURL, fileId, async () => {
-            try {
-                const response = await generateAndSendImgToAI(fileId, { userID:chatId, msgText: msg.text} )
-                if (response && response.toString() !== "") {
-                    bot.sendMessage(chatId, response);
+        } else {
+            downloadImg(downloadURL, fileId, async () => {
+                try {
+                    const response = await generateAndSendImgToAI(fileId, { userID:chatId, msgText: msg.text} )
+                    if (response && response.toString() !== "") {
+                        bot.sendMessage(chatId, response);
+                    }
+                } catch (e) {
+                    bot.sendMessage(chatId, "Ошибка по причине: "+e.toString());
                 }
-            } catch (e) {
-                bot.sendMessage(chatId, "Ошибка по причине: "+e.toString());
-            }
-            deleteImg(fileId)
-        });
+                deleteImg(fileId)
+            });
+        }
     }); 
 
     console.log('Telegram bot initialized');

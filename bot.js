@@ -4,7 +4,6 @@ const fs = require('fs');
 const { sendMessageToAI, sendPicToAI } = require('./ai.js');
 const MAX_LENGTH = 100;
 
-
 const generateMsgToAI = async (msgText) => {
     if (isLengthValid(msgText)) {
         return await sendMessageToAI(msgText)
@@ -50,5 +49,7 @@ const deleteImg = (fileId) => {
         }
     });
 }
+
+
 
 module.exports = { generateMsgToAI, downloadImg, deleteImg, generateAndSendImgToAI };
