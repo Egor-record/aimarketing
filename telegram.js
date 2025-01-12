@@ -13,7 +13,7 @@ const initTelegramBot = () => {
         const chatId = msg.chat.id;
         if (msg.text) {
 
-            const user = await getUser(msg.chat.username);
+            let user = await getUser(msg.chat.username);
             const aiMarketingData = {
                 chatID: msg.chat.id,
                 paidUntil: new Date(),
@@ -24,19 +24,20 @@ const initTelegramBot = () => {
                 payments: []
             }
             if (!user) {
-                await createUser({
+                user = await createUser({
                     telegramID: msg.chat.username,
                     role: 3,
                     createData: new Date(),
                     aiMarketing: aiMarketingData
                 })
             } else if (!user.aiMarketing){
-                await addServiceToUser(msg.chat.username, "aiMarketing", aiMarketingData)
+                user = await addServiceToUser(msg.chat.username, "aiMarketing", aiMarketingData)
             }
              
             if (msg.text === '/start') {
                 bot.sendMessage(chatId, "Добро пожаловать!");
             } else {
+                
                 const isAllowed = (await isUserPaid(msg.chat.username, "aiMarketing") && await isUserHasTokens(msg.chat.username, "aiMarketing")) || isUserSuperAdmin(user);
 
                 if (!isAllowed) {
@@ -52,12 +53,12 @@ const initTelegramBot = () => {
     });
 
     bot.on('photo', async (msg) => {
-        await createNewUserOrService(msg, "aiMarketing")
+        const user = await getUser(msg.chat.username);
         const downloadURL = await getUrlToPick(msg)
         const fileId = msg.photo[msg.photo.length - 1].file_id;
         const chatId = msg.chat.id;
 
-        const isAllowed = await isUserPaid(msg.chat.username, "aiMarketing") && await isUserHasTokens(msg.chat.username, "aiMarketing");
+        const isAllowed = (await isUserPaid(msg.chat.username, "aiMarketing") && await isUserHasTokens(msg.chat.username, "aiMarketing")) || isUserSuperAdmin(user);        
         
         if (!isAllowed) {
             return bot.sendMessage(chatId, "Кончились токены или подписка!");

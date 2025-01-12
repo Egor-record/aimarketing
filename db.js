@@ -56,8 +56,7 @@ const createUser = async (user) => {
         aibot
     };
     try {
-        let result = await collection.insertOne(data);
-        return result ? true : false
+        return await collection.insertOne(data);
     } catch (e) {
         console.log(e)
         return false
