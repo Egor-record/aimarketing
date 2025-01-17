@@ -63,6 +63,12 @@ const createUser = async (user) => {
     }
 }
 
+const getAllUsers = async () => {
+    let collection = await db.collection("Users");
+    const users = await collection.find({}).toArray();
+    return users;
+}
+
 const addServiceToUser = async (telegramID, service, val) => {
     const user = await getUser(telegramID);
     if (!user[service]) {
@@ -85,4 +91,4 @@ process.on('SIGINT', async () => {
     process.exit(0);
 });
 
-module.exports = { connectDB, createUser, addServiceToUser, isUserHasService, getUser };
+module.exports = { connectDB, createUser, addServiceToUser, isUserHasService, getUser, getAllUsers };

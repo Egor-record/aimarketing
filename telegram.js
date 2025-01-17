@@ -1,7 +1,7 @@
 require('dotenv').config();
 const fetch = require('node-fetch');
 const TelegramBot = require('node-telegram-bot-api');
-const { generateMsgToAI, downloadImg, generateAndSendImgToAI, deleteImg } = require('./bot.js');
+const { generateMsgToAI, downloadImg, generateAndSendImgToAI, deleteImg } = require('./processing.js');
 const { getUser, createUser, addServiceToUser} = require('./db.js')
 const { isUserPaid, isUserHasTokens, isUserSuperAdmin } = require('./user.js')
 
@@ -24,21 +24,21 @@ const initTelegramBot = () => {
                 payments: []
             }
             if (!user) {
-                user = await createUser({
+                await createUser({
                     telegramID: msg.chat.username,
                     role: 3,
                     createData: new Date(),
                     aiMarketing: aiMarketingData
                 })
             } else if (!user.aiMarketing){
-                user = await addServiceToUser(msg.chat.username, "aiMarketing", aiMarketingData)
+                await addServiceToUser(msg.chat.username, "aiMarketing", aiMarketingData)
             }
              
             if (msg.text === '/start') {
                 bot.sendMessage(chatId, "Добро пожаловать!");
             } else {
                 
-                const isAllowed = (await isUserPaid(msg.chat.username, "aiMarketing") && await isUserHasTokens(msg.chat.username, "aiMarketing")) || isUserSuperAdmin(user);
+                const isAllowed = (await isUserPaid(msg.chat.username, "aiMarketing") && await isUserHasTokens(msg.chat.username, "aiMarketing")) || (user && isUserSuperAdmin(user));
 
                 if (!isAllowed) {
                     bot.sendMessage(chatId, "Кончились токены или подписка!");
