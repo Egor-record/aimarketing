@@ -10,7 +10,7 @@ const sendMessageToAI = (msgBody) => {
         temperature: 0,
         max_tokens: 500,
         messages: [{
-            content: `I have a sentence ${msgBody}. Translate it to Dutch.`,
+            content: msgBody,
             role:  "user"
         }]
     };
