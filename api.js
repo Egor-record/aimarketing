@@ -1,9 +1,11 @@
 const express = require('express');
+const cors = require('cors');
 const { getAllUsers } = require('./db.js')
 
 const initAPI = () => {
   const app = express();
   const PORT = 3700;
+  app.use(cors());
   const apiRouter = express.Router();
 
   app.use(express.json());

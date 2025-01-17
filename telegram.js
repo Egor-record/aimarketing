@@ -21,7 +21,8 @@ const initTelegramBot = () => {
                 currentModel: 1,
                 temperature: 0,
                 tokens: 0,
-                payments: []
+                payments: [],
+                messages: []
             }
             if (!user) {
                 await createUser({
