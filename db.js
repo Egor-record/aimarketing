@@ -40,6 +40,13 @@ const getUser = async (telegramID) => {
     return user;
 }
 
+const getAdmin = async (telegramID) => {
+    if (!db) { return }
+    let collection = await db.collection("Admins");
+    const user = await collection.findOne({ telegramID: telegramID });
+    return user;
+}
+
 /** 
  * Create a new user.
  * @param {User} user 
@@ -91,4 +98,4 @@ process.on('SIGINT', async () => {
     process.exit(0);
 });
 
-module.exports = { connectDB, createUser, addServiceToUser, isUserHasService, getUser, getAllUsers };
+module.exports = { connectDB, createUser, addServiceToUser, isUserHasService, getUser, getAllUsers, getAdmin };

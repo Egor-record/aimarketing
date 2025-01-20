@@ -1,16 +1,19 @@
 <template>
   <div>
-    <UsersTable></UsersTable>
+    <router-view />
   </div>
 </template>
 
 <script>
-import UsersTable from './components/UsersTable.vue';
+import { useAuthStore } from '@/store/auth';
 export default {
   name: 'App',
-  components: {
-    UsersTable
-  }
+  setup() {
+    const authStore = useAuthStore();
+    return {
+      isAuthenticated: authStore.isAuthenticated,
+    };
+  },
 }
 </script>
 
