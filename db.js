@@ -43,7 +43,7 @@ const getUser = async (telegramID) => {
 const getAdmin = async (telegramID) => {
     if (!db) { return }
     let collection = await db.collection("Admins");
-    const user = await collection.findOne({ telegramID: telegramID });
+    const user = await collection.findOne({ user: telegramID });
     return user;
 }
 

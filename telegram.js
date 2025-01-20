@@ -35,8 +35,6 @@ const initTelegramBot = () => {
             return 
         }
 
-        console.log(settings)
-
         try {
             const response = await generateMsgToAI(msg.text, settings);
             if (response) {

@@ -30,7 +30,7 @@
     </div>
 </template>
 <script>
-
+import api from '@/utils/api';
   export default {
     name: 'AdminTable',
     data() {
@@ -41,11 +41,11 @@
     },
     async created() {
         try {
-            const response = await fetch('/api/v1/users');
-            this.users = await response.json();
+        const response = await api.get('/api/v1/users'); // Use the axios instance
+        this.users = response.data; // Assign the data from the response
         } catch (error) {
-            this.errorLoading = true
-            console.error('Error fetching users:', error);
+        this.errorLoading = true;
+        console.error('Error fetching users:', error);
         }
     },
     methods: {

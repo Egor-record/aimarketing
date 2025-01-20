@@ -5,6 +5,8 @@ const cors = require('cors');
 const authRoutes = require('./routes/login')
 const userRoutes = require('./routes/users')
 
+const authMiddleware = require('./authMiddleware');
+
 const PORT = process.env.PORT || 3700;
 
 const initAPI = () => {
@@ -14,7 +16,7 @@ const initAPI = () => {
   app.use(express.json());
 
   app.use('/api/v1', authRoutes); 
-  app.use('/api/v1', userRoutes); 
+  app.use('/api/v1', authMiddleware, userRoutes); 
 
   app.use(express.static(path.join(__dirname, '../front/ai-admin/dist')));
 

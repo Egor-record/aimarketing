@@ -5,8 +5,8 @@ const { connectDB } = require('./db.js');
 const { initAPI } = require('./api/server.js')
 
 connectDB().then(()=>{
-    initTelegramBot();
-    // initAPI();
+    // initTelegramBot();
+    initAPI();
     
 }).catch(console.dir);
 
