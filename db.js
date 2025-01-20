@@ -76,6 +76,8 @@ const getAllUsers = async () => {
     return users;
 }
 
+
+
 const addServiceToUser = async (telegramID, service, val) => {
     const user = await getUser(telegramID);
     if (!user[service]) {

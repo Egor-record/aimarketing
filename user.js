@@ -43,4 +43,14 @@ const isUserPaid = (user, service) => {
     return paidUntil > now;
 }
 
-module.exports = { isUserAdmin, isUserSuperAdmin, isUserHasTokens, isUserPaid };
+const getUserSettings = (user, service) => {
+    if (!user || !service) {return {}}
+    const settings = {
+        temperature: user[service].temperature > 2 ? 2 : user[service].temperature,
+        max_tokens: user[service].max_tokens || 500,
+        model: user[service].model || 1
+    }
+    return settings
+}
+
+module.exports = { isUserAdmin, isUserSuperAdmin, isUserHasTokens, isUserPaid, getUserSettings };

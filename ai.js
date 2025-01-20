@@ -2,13 +2,21 @@ require('dotenv').config()
 const fs = require('fs');
 const OpenAI = require("openai");
 
+const MODELS = {
+    1: 'gpt-3.5-turbo-0125',
+    2: 'gpt-4o-mini'
+}
 
-const sendMessageToAI = (msgBody) => {
+const MAX_TOKENS = 500
+
+
+const sendMessageToAI = (msgBody, settings) => {
     const ai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const { temperature, model  } = settings
     const request = {
-        model: 'gpt-3.5-turbo-0125',
-        temperature: 0,
-        max_tokens: 500,
+        model: MODELS[model],
+        temperature: temperature,
+        max_tokens: MAX_TOKENS,
         messages: [{
             content: msgBody,
             role:  "user"
@@ -36,7 +44,7 @@ const sendPicToAI = (imgPath, userMSG) => {
     const base64Image = convertIMGtoBase64(imgPath);
     const prompt = [{
         role: "system", 
-        content: "Ты дружелюбный и полезный ассистент. Ты - ChatGPT, большая языковая модель, созданная OpenAI. Отвечай максимально кратко. Постарайся, чтобы твои ответы были лаконичными и их длина была не более 100 символов."
+        content: "You are a friendly and helpful assistant. You are ChatGPT, a large language model created by OpenAI. Respond as concisely as possible. Try to keep your answers brief and no longer than 100 characters."
     }];
 
     prompt.push({
@@ -54,9 +62,9 @@ const sendPicToAI = (imgPath, userMSG) => {
     });
    
     const request = {
-        model: 'gpt-4o-mini',
+        model: MODELS[2],
         temperature: 1,
-        max_tokens: 500,
+        max_tokens: MAX_TOKENS,
         messages: prompt,
         stream: false
     };

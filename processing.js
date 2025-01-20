@@ -2,11 +2,12 @@ const path = require('path');
 const request = require('request');
 const fs = require('fs');
 const { sendMessageToAI, sendPicToAI } = require('./ai.js');
-const MAX_LENGTH = 100;
 
-const generateMsgToAI = async (msgText) => {
+const MAX_LENGTH = 500;
+
+const generateMsgToAI = async (msgText, settings) => {
     if (isLengthValid(msgText)) {
-        return await sendMessageToAI(msgText)
+        return await sendMessageToAI(msgText, settings)
     } else {
         return 'Слишком длинное сообщение!'
     }
