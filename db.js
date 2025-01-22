@@ -14,12 +14,9 @@ let db;
 
 const connectDB = async () => {
     try {
-        // Connect the client to the server	(optional starting in v4.7)
-        await client.connect();
-    
+        await client.connect();    
         const dbName = isProd ? 'Users' : 'Users_dev';
         db = client.db(dbName)
-        // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } catch (err) {
@@ -94,10 +91,20 @@ const isUserHasService = async (telegramID, service) => {
     return !!user[service]
 }
 
+const setTokens = async (telegramID, service, tokens) => {
+    const collection = await db.collection("Users");
+    await collection.updateOne(
+        { telegramID },
+        { $set: { [`${service}.tokens`] : tokens } }
+    );
+
+    return
+}
+
 process.on('SIGINT', async () => {
     console.log('Closing MongoDB connection');
     await client.close();
     process.exit(0);
 });
 
-module.exports = { connectDB, createUser, addServiceToUser, isUserHasService, getUser, getAllUsers, getAdmin };
+module.exports = { connectDB, createUser, addServiceToUser, isUserHasService, getUser, getAllUsers, getAdmin, setTokens };

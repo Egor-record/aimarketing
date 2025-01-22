@@ -1,35 +1,84 @@
 const path = require('path');
 const request = require('request');
 const fs = require('fs');
+const { encode } = require("gpt-tokenizer");
 const { sendMessageToAI, sendPicToAI } = require('./ai.js');
 
 const MAX_LENGTH = 500;
 
 const generateMsgToAI = async (msgText, settings) => {
-    if (isLengthValid(msgText)) {
-        return await sendMessageToAI(msgText, settings)
-    } else {
-        return 'Слишком длинное сообщение!'
+    if (!isLengthValid(msgText)) return { message: 'Слишком длинное сообщение!', tokens: 0 }
+
+    const messages = [{
+        content: msgText,
+        role:  "user"
+    }]
+
+    let tokensUsed = countTokens(messages)
+    let response = "";
+
+    try {
+        response = await sendMessageToAI(messages, settings)
+    } catch (e) {
+        console.log(e);
+        return { message: "Бот пока занят и не отвечает. Но мы работаем над этим.", tokens: tokensUsed }
     }
+    tokensUsed += countTokens([{content: response}])
+    return { message: response, tokens: tokensUsed }
+
 }
 
-const downloadImg = (url, fileId, callback) => {
-  const pathPicFolder = path.join(__dirname, `/pictures/${fileId}.jpg`)
-  request.head(url, (err, res, body) => {
-    request(url).pipe(fs.createWriteStream(pathPicFolder)).on('close', callback);
-  });
-}
+const downloadImg = (url, fileId) => {
+    return new Promise((resolve, reject) => {
+      const pathPicFolder = path.join(__dirname, `/pictures/${fileId}.jpg`);
+  
+      request.head(url, (err, res, body) => {
+        if (err) {
+          return reject(err);
+        }
 
-const generateAndSendImgToAI = async (fileId, msg) => {
-    const { userID, msgText } = msg;
-    const pathToPic = path.join(__dirname, `/pictures/${fileId}.jpg`)
-    if (!userID) return 'Не можно!'
+        request(url)
+          .pipe(fs.createWriteStream(pathPicFolder))
+          .on('finish', () => resolve(pathPicFolder))
+          .on('error', (error) => reject(error));
+      });
+    });
+  };
 
-    if (msgText && !isLengthValid(msgText)) {
-        return 'Слишком длинное сообщение!' 
-    } else {
-        return await sendPicToAI(pathToPic, msgText)
+const sendImageToAI = async (fileId, msgText) => {
+
+    if (!isLengthValid(msgText)) return { message: 'Слишком длинное описание к картинке!', tokens: 0 }
+
+    const base64Image = convertIMGtoBase64(path.join(__dirname, `/pictures/${fileId}.jpg`));
+
+    const messages = [{
+        role: "system", 
+        content: "You are a friendly and helpful assistant. Respond as concisely as possible. Try to keep your answers brief and no longer than 200 characters."
+    },{
+        role: "user",
+        content: [
+            { type: "text", text: msgText },
+            {
+                type: "image_url",
+                image_url: {
+                    url: `data:image/jpeg;base64,${base64Image}`,
+                    detail: "low",
+                },
+            },
+        ],
+    }];  
+    
+    let tokensUsed = countTokens(messages)
+    let response = "";
+    try {
+        response = await sendPicToAI(pathToPic, msgText)
+    } catch (e) {
+        console.log(e);
+        return { message: "Бот пока занят и не отвечает. Но мы работаем над этим.", tokens: tokensUsed }
     }
+
+    tokensUsed += countTokens([{content: response}])
+    return { message: response, tokens: tokensUsed }
 }
 
 const isLengthValid = (msg) => {
@@ -51,6 +100,28 @@ const deleteImg = (fileId) => {
     });
 }
 
+const countTokens = (messages) => {
+    let totalTokens = 0;
+    for (const message of messages) {
+      if (message.role) { totalTokens += encode(message.role).length }
+      if (Array.isArray(message.content)) {
+        for (const item of message.content) {
+            if (item.type === "text" && item.text) {
+              totalTokens += encode(item.text).length;
+            } else if (item.type === "image_url" && item.image_url) {
+              totalTokens += encode(JSON.stringify(item.image_url)).length;
+            }
+          }
+      } else if (typeof message.content === "string") {
+        totalTokens += encode(message.content).length
+      }
+    }
+    return totalTokens
+}
 
+const convertIMGtoBase64 = (imagePath) => {
+    const imageBuffer = fs.readFileSync(imagePath);
+    return imageBuffer.toString("base64");
+}
 
-module.exports = { generateMsgToAI, downloadImg, deleteImg, generateAndSendImgToAI };
+module.exports = { generateMsgToAI, downloadImg, deleteImg, sendImageToAI };

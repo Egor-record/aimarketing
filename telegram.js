@@ -1,8 +1,8 @@
 require('dotenv').config();
 const fetch = require('node-fetch');
 const TelegramBot = require('node-telegram-bot-api');
-const { generateMsgToAI, downloadImg, generateAndSendImgToAI, deleteImg } = require('./processing.js');
-const { getUser, createUser, addServiceToUser } = require('./db.js')
+const { generateMsgToAI, downloadImg, sendImageToAI, deleteImg } = require('./processing.js');
+const { getUser, createUser, addServiceToUser, setTokens } = require('./db.js')
 const { isUserPaid, isUserHasTokens, isUserSuperAdmin, getUserSettings } = require('./user.js')
 
 
@@ -36,9 +36,14 @@ const initTelegramBot = () => {
         }
 
         try {
-            const response = await generateMsgToAI(msg.text, settings);
-            if (response) {
-                bot.sendMessage(chatId, response);
+            const { message, tokens } = await generateMsgToAI(msg.text, settings);
+            if (message) {
+                bot.sendMessage(chatId, message);
+                if (typeof user[service].tokens === 'number' && 
+                    !isNaN(user[service].tokens) &&
+                    typeof tokens === 'number' && !isNaN(tokens)) {
+                        await setTokens(msg.chat.username, "aiMarketing", user[service].tokens - tokens)
+                }
                 return
             }
         } catch (e) {
@@ -51,26 +56,46 @@ const initTelegramBot = () => {
 
     bot.on('photo', async (msg) => {
         const user = await getUser(msg.chat.username);
-        const downloadURL = await getUrlToPick(msg)
+
+        const urlToDownloadPick = await getUrlToPick(msg)
+
         const fileId = msg.photo[msg.photo.length - 1].file_id;
         const chatId = msg.chat.id;
 
         const isAllowed = (await isUserPaid(msg.chat.username, "aiMarketing") && await isUserHasTokens(msg.chat.username, "aiMarketing")) || isUserSuperAdmin(user);        
         
         if (!isAllowed) {
-            return bot.sendMessage(chatId, "Кончились токены или подписка!");
-        } else {
-            downloadImg(downloadURL, fileId, async () => {
-                try {
-                    const response = await generateAndSendImgToAI(fileId, { userID:chatId, msgText: msg.text} )
-                    if (response && response.toString() !== "") {
-                        bot.sendMessage(chatId, response);
-                    }
-                } catch (e) {
-                    bot.sendMessage(chatId, "Ошибка по причине: "+e.toString());
-                }
-                deleteImg(fileId)
-            });
+            bot.sendMessage(chatId, "Кончились токены или подписка!");
+            return 
+        }
+
+        try {
+            await downloadImg(urlToDownloadPick, fileId);
+        } catch (e) {
+            console.log(e)
+            bot.sendMessage(chatId, "Ошибка скачивания картинки.");
+            return
+        }
+
+        try {
+            const { message, tokens } = await sendImageToAI(fileId, msg.text )
+            if (!message) {
+                bot.sendMessage(chatId, "Бот чем-то недоволен!");
+                return
+            }
+            bot.sendMessage(chatId, message);
+            if (typeof user[service].tokens === 'number' && 
+                    !isNaN(user[service].tokens) &&
+                    typeof tokens === 'number' && !isNaN(tokens)) {
+                await setTokens(msg.chat.username, "aiMarketing", user[service].tokens - tokens)
+            }
+            return
+
+        } catch (e) {
+            bot.sendMessage(chatId, "Бот чем-то недоволен!");
+            return
+        } finally {
+            deleteImg(fileId);
         }
     }); 
 
