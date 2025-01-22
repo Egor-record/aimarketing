@@ -39,8 +39,8 @@ const initTelegramBot = () => {
             const { message, tokens } = await generateMsgToAI(msg.text, settings);
             if (message) {
                 bot.sendMessage(chatId, message);
-                if (typeof user[service].tokens === 'number' && 
-                    !isNaN(user[service].tokens) &&
+                if (typeof user["aiMarketing"].tokens === 'number' && 
+                    !isNaN(user["aiMarketing"].tokens) &&
                     typeof tokens === 'number' && !isNaN(tokens)) {
                         await setTokens(msg.chat.username, "aiMarketing", user[service].tokens - tokens)
                 }
