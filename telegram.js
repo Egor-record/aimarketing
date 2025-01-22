@@ -42,7 +42,7 @@ const initTelegramBot = () => {
                 if (typeof user["aiMarketing"].tokens === 'number' && 
                     !isNaN(user["aiMarketing"].tokens) &&
                     typeof tokens === 'number' && !isNaN(tokens)) {
-                        await setTokens(msg.chat.username, "aiMarketing", user[service].tokens - tokens)
+                        await setTokens(msg.chat.username, "aiMarketing", user["aiMarketing"].tokens - tokens)
                 }
                 return
             }
