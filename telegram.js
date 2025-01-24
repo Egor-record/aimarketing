@@ -22,8 +22,8 @@ const initTelegramBot = () => {
             return
         } 
             
-        const isAllowed = (await isUserPaid(msg.chat.username, "aiMarketing") && await isUserHasTokens(msg.chat.username, "aiMarketing")) || (user && isUserSuperAdmin(user));
-
+        const isAllowed = (isUserPaid(user, "aiMarketing") && isUserHasTokens(user, "aiMarketing")) || (user && isUserSuperAdmin(user));
+       
         if (!isAllowed) {
             bot.sendMessage(chatId, "Кончились токены или подписка!");
             return
@@ -63,7 +63,7 @@ const initTelegramBot = () => {
         const chatId = msg.chat.id;
         const service = "aiMarketing"
 
-        const isAllowed = (await isUserPaid(msg.chat.username, service) && await isUserHasTokens(msg.chat.username, service)) || isUserSuperAdmin(user);        
+        const isAllowed = (isUserPaid(user, service) && isUserHasTokens(user, service)) || isUserSuperAdmin(user);        
         
         if (!isAllowed) {
             bot.sendMessage(chatId, "Кончились токены или подписка!");
