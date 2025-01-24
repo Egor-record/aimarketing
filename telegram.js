@@ -61,8 +61,9 @@ const initTelegramBot = () => {
 
         const fileId = msg.photo[msg.photo.length - 1].file_id;
         const chatId = msg.chat.id;
+        const service = "aiMarketing"
 
-        const isAllowed = (await isUserPaid(msg.chat.username, "aiMarketing") && await isUserHasTokens(msg.chat.username, "aiMarketing")) || isUserSuperAdmin(user);        
+        const isAllowed = (await isUserPaid(msg.chat.username, service) && await isUserHasTokens(msg.chat.username, service)) || isUserSuperAdmin(user);        
         
         if (!isAllowed) {
             bot.sendMessage(chatId, "Кончились токены или подписка!");
@@ -78,7 +79,7 @@ const initTelegramBot = () => {
         }
 
         try {
-            const { message, tokens } = await sendImageToAI(fileId, msg.text )
+            const { message, tokens } = await sendImageToAI(fileId, msg.caption )
             if (!message) {
                 bot.sendMessage(chatId, "Бот чем-то недоволен!");
                 return
@@ -87,11 +88,12 @@ const initTelegramBot = () => {
             if (typeof user[service].tokens === 'number' && 
                     !isNaN(user[service].tokens) &&
                     typeof tokens === 'number' && !isNaN(tokens)) {
-                await setTokens(msg.chat.username, "aiMarketing", user[service].tokens - tokens)
+                await setTokens(msg.chat.username, service, user[service].tokens - tokens)
             }
             return
 
         } catch (e) {
+            console.log(e)
             bot.sendMessage(chatId, "Бот чем-то недоволен!");
             return
         } finally {

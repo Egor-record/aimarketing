@@ -15,7 +15,7 @@ let db;
 const connectDB = async () => {
     try {
         await client.connect();    
-        const dbName = isProd ? 'Users' : 'Users_dev';
+        const dbName = 'Users' // isProd ? 'Users' : 'Users_dev';
         db = client.db(dbName)
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
@@ -92,12 +92,19 @@ const isUserHasService = async (telegramID, service) => {
 }
 
 const setTokens = async (telegramID, service, tokens) => {
+    await updateCollection(telegramID, service, "tokens", tokens)
+}
+
+const setPaidUntil = async (telegramID, service, date) => {
+    await updateCollection(telegramID, service, "paidUntil", date)
+}
+
+const updateCollection = async (telegramID, service, changingValue, value) => {
     const collection = await db.collection("Users");
     await collection.updateOne(
         { telegramID },
-        { $set: { [`${service}.tokens`] : tokens } }
+        { $set: { [`${service}.${changingValue}`] : value } }
     );
-
     return
 }
 
@@ -107,4 +114,4 @@ process.on('SIGINT', async () => {
     process.exit(0);
 });
 
-module.exports = { connectDB, createUser, addServiceToUser, isUserHasService, getUser, getAllUsers, getAdmin, setTokens };
+module.exports = { connectDB, createUser, addServiceToUser, isUserHasService, getUser, getAllUsers, getAdmin, setTokens, setPaidUntil };

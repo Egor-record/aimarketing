@@ -71,7 +71,7 @@ const sendImageToAI = async (fileId, msgText) => {
     let tokensUsed = countTokens(messages)
     let response = "";
     try {
-        response = await sendPicToAI(pathToPic, msgText)
+        response = await sendPicToAI(messages)
     } catch (e) {
         console.log(e);
         return { message: "Бот пока занят и не отвечает. Но мы работаем над этим.", tokens: tokensUsed }

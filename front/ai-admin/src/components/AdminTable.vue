@@ -19,8 +19,32 @@
                     <td>{{ user.aiMarketing.chatID }}</td>
                     <td>{{ formatDate(user.createData) }}</td>
                     <td>{{ user.aiMarketing.isUsingOwnKey ? 'Да' : 'Нет' }}</td>
-                    <td>{{ formatDate(user.aiMarketing.paidUntil)}}</td>
-                    <td>{{ user.aiMarketing.tokens }}</td>
+                    <td>
+                        <span v-if="!user.isEditingPaidUntil" @click="togglePaidUntilInput(user)">
+                            {{ formatDate(user.aiMarketing.paidUntil)}}
+                        </span>
+                        <span v-else>
+                            <input 
+                                v-model="user.aiMarketing.formattedPaidUntil"
+                                type="date" 
+                                @blur="updatePaidUntil(user)" 
+                                @keyup.enter="updatePaidUntil(user)"
+                            />
+                        </span>
+                    </td>
+                    <td>
+                        <span v-if="!user.isEditingTokens" @click="toggleTokenInput(user)">
+                            {{ user.aiMarketing.tokens }}
+                        </span>
+                        <span v-else>
+                            <input 
+                                v-model.number="user.aiMarketing.tokens" 
+                                type="number" 
+                                @blur="updateToken(user)" 
+                                @keyup.enter="updateToken(user)"
+                            />
+                        </span>
+                    </td>
                 </tr>
             </tbody>
         </table>
@@ -30,7 +54,9 @@
     </div>
 </template>
 <script>
+import { useAuthStore } from '@/store/auth';
 import api from '@/utils/api';
+const PATH = '/api/v1/users';
   export default {
     name: 'AdminTable',
     data() {
@@ -41,15 +67,23 @@ import api from '@/utils/api';
     },
     async created() {
         try {
-        const response = await api.get('/api/v1/users'); // Use the axios instance
-        this.users = response.data; // Assign the data from the response
+            const response = await api.get(PATH)
+            this.users = response.data
+            this.users = response.data.map(user => ({
+                ...user,
+                isEditingTokens: false,
+                isEditingPaidUntil: false,
+            }));
         } catch (error) {
-        this.errorLoading = true;
-        console.error('Error fetching users:', error);
+            this.errorLoading = true
+            if (error.response && error.response.status === 403) {
+                useAuthStore().logout()
+                this.$router.push('/login');
+            }
         }
     },
     methods: {
-        formatDate(dateString) {
+        formatDate (dateString) {
             const date = new Date(dateString);
             return date.toLocaleString('en-US', {
                 year: 'numeric',
@@ -59,7 +93,51 @@ import api from '@/utils/api';
                 minute: '2-digit',
             });
         },
+        toggleTokenInput (user) {
+            user.isEditingTokens = !user.isEditingTokens;
+        },
+        togglePaidUntilInput (user) {
+            user.isEditingPaidUntil = !user.isEditingPaidUntil;
+            if (user.isEditingPaidUntil) {
+                user.aiMarketing.formattedPaidUntil = this.formatDateForInput(user.aiMarketing.paidUntil);
+            }
+        },
+        formatDateForInput(isoDate) {
+            if (!isoDate) return '';
+            const date = new Date(isoDate);
+            return date.toISOString().split('T')[0];
+        },
+        async updatePaidUntil(user) {
+            const newDate = user.aiMarketing.formattedPaidUntil;
+            if (newDate) {
+                user.aiMarketing.paidUntil = new Date(newDate).toISOString();
+            }
+            user.isEditingPaidUntil = false;
 
+            await this.updateUserValue(user, "paidUntil");
+        },
+        async updateToken (user) {
+            this.toggleTokenInput(user),
+            await this.updateUserValue(user, "tokens")
+        },
+        async updateUserValue (user, valueName, service = "aiMarketing") {
+            try {
+                const response = await api.put(`${PATH}/${user.telegramID}/${valueName}`, {
+                    value: user[service][valueName],
+                    service: service
+                });
+                if (response.status !== 200) {
+                    console.error('Error updating tokens:');
+                }
+            } catch (error) {
+                if (error.response && error.response.status === 403) {
+                    useAuthStore().logout();
+                    this.$router.push('/login');
+                } else {
+                    console.error('Error updating tokens:', error);
+                }
+            }
+        }
     },
   }
   </script>

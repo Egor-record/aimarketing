@@ -30,7 +30,7 @@ const sendMessageToAI = (messages, settings) => {
     });
 }
 
-const sendPicToAI = (imgPath, userMSG) => {
+const sendPicToAI = (prompt) => {
     const ai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
    
     const request = {
