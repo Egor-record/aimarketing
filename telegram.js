@@ -244,11 +244,13 @@ const getMenuMsgsResponse = async (msg, user) => {
     }
 
     if (msg === SYSTEM_MSG.statistics) {
-        return { value: `<b>Статистика по боту</b>
-⭐ Осталось токенов: <b>${user[BOT_SETTING.serviceName].tokens}</b>
-📆 Подписка кончится: <b>${beatifyDate(user[BOT_SETTING.serviceName].paidUntil)}</b>
+        const tokensLeft = isUserHasTokens(user, BOT_SETTING.serviceName) ? '⭐ Осталось токенов: <b>' + user[BOT_SETTING.serviceName].tokens + '</b>': '🥲 Нет доступных токенов'
+        const userPaid = isUserPaid(user, BOT_SETTING.serviceName) ? `📆 Подписка до: <b>${beatifyDate(user[BOT_SETTING.serviceName].paidUntil)}</b>` : '🥲 Подписка не оформлена'
+        return { value: `<b>Статистика по боту:</b>
+${tokensLeft}
+${userPaid}
 
-<b>Настройки</b>
+<b>Настройки:</b>
 🌡 Температура запросов: <b>${user[BOT_SETTING.serviceName].temperature}</b>
 🐕 Модель ИИ: <b>${MODELS[user[BOT_SETTING.serviceName].currentModel]}</b>`, isHTML: true }
     }
