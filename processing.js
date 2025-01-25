@@ -1,6 +1,8 @@
 const path = require('path');
 const request = require('request');
 const fs = require('fs');
+const { format } = require('date-fns');
+const { ru } = require('date-fns/locale/ru');
 const { encode } = require("gpt-tokenizer");
 const { sendMessageToAI, sendPicToAI } = require('./ai.js');
 const { createLog } = require('./db.js')
@@ -129,4 +131,9 @@ const convertIMGtoBase64 = (imagePath) => {
     return imageBuffer.toString("base64");
 }
 
-module.exports = { generateMsgToAI, downloadImg, deleteImg, sendImageToAI };
+const beatifyDate = (originalDate) => {
+    const date = new Date(originalDate);
+    return format(date, 'dd MMMM yyyy года', { locale: ru });
+}
+
+module.exports = { generateMsgToAI, downloadImg, deleteImg, sendImageToAI, beatifyDate };

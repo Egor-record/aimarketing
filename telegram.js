@@ -1,22 +1,56 @@
 require('dotenv').config();
 const fetch = require('node-fetch');
 const TelegramBot = require('node-telegram-bot-api');
-const { generateMsgToAI, downloadImg, sendImageToAI, deleteImg } = require('./processing.js');
+const { generateMsgToAI, downloadImg, sendImageToAI, deleteImg, beatifyDate } = require('./processing.js');
 const { getUser, createUser, addServiceToUser, setTokens, createLog, getLogs } = require('./db.js')
 const { isUserPaid, isUserHasTokens, isUserSuperAdmin, getUserSettings } = require('./user.js')
+const { MODELS } = require('./ai.js')
 
+const BOT_SETTING = {
+    serviceName: "aiMarketing",
+    botToken: process.env.TELEGRAM_BOT,
+    isPolling: true
+}
+
+const SYSTEM_MSG = {
+    statistics: 'Статистика и настройки',
+    settings: 'Изменить настройки',
+    start: '/start',
+    logs: '/logs'
+}
+
+const ERROR_MSG = {
+    onlyTextOrPickAllowed: "Доступно только текст или картинка.",
+    noUserNameProvided: "Отсутствует имя пользователя.",
+    userCreatingError: "Ошибка в создании пользователя.",
+    systemMsgHandlingError: "Ошибка в обработке системного сообщения.",
+    noTokkenOrSubscribtion: "Кончились токены или подписка.",
+    noSettingsProvided: "Не могу загрузить настройки!",
+    generalError: "Ошибка в генерации сообщения",
+    erorrDownloadingPick: "Ошибка скачивания картинки.",
+    noNewLogs: "Нет новых логов",
+    errorGettingLogs: "Ошибка в получении логов"
+}
+
+const MENU_OPTIONS = {
+    reply_markup: {
+      keyboard: [[SYSTEM_MSG.statistics], [SYSTEM_MSG.settings]],
+      resize_keyboard: true,
+    },
+};
 
 const initTelegramBot = () => {
-    const bot = new TelegramBot(process.env.TELEGRAM_BOT, { polling: true });
+    const bot = new TelegramBot(BOT_SETTING.botToken, { polling: BOT_SETTING.isPolling });
 
     bot.on('message', async (msg) => {
+        const chatId = msg.chat.id;
         if (!msg.text) {
+            bot.sendMessage(chatId, ERROR_MSG.onlyTextOrPickAllowed, MENU_OPTIONS);
             return 
         }
-        const chatId = msg.chat.id;
 
         if (!msg.chat.username) {
-            bot.sendMessage(chatId, "Отсутствует имя пользователя.");
+            bot.sendMessage(chatId, ERROR_MSG.noUserNameProvided, MENU_OPTIONS);
             return
         }
 
@@ -24,63 +58,48 @@ const initTelegramBot = () => {
         try {
             await createUserOrService(msg, user)
         } catch (e) {
-            bot.sendMessage(chatId, "Ошибка в создании пользователя.");
+            bot.sendMessage(chatId, ERROR_MSG.userCreatingError, MENU_OPTIONS);
             return
         }
 
-            
-        if (msg.text === '/start') {
-            bot.sendMessage(chatId, "Добро пожаловать!");
-            return
-        }
-        
-        if (msg.text === '/logs' && user && isUserSuperAdmin(user)) {
-            try {
-                const logs = await getLogs(10)
-                const formattedLogs = logs.map(log => {
-                    return `Telegram ID: ${log.telegramID || "Unknown"}, Created At: ${new Date(log.createdAt).toISOString()}, Error: ${log.errorMsg || "No error message"}`;
-                }).join("\n");
-                if (!formattedLogs) {
-                    bot.sendMessage(chatId, "Нет новых логов");
-                    return 
-                }
-                bot.sendMessage(chatId, formattedLogs);
-                return
-            } catch (e) {
-                await createLog(String(e), user.telegramID)
-                bot.sendMessage(chatId, "Ошибка в получении логов");
+        if (isSystemMsg(msg.text)) {
+            const response = await getMenuMsgsResponse(msg.text, user)
+            if (response && typeof response.value === "string") {
+                bot.sendMessage(chatId, response.value, { parse_mode: response.isHTML ? 'HTML' : null }); 
                 return
             }
+            bot.sendMessage(chatId, ERROR_MSG.systemMsgHandlingError, MENU_OPTIONS);
+            return  
         }
-            
-        const isAllowed = (isUserPaid(user, "aiMarketing") && isUserHasTokens(user, "aiMarketing")) || (user && isUserSuperAdmin(user));
+    
+        const isAllowed = (isUserPaid(user, BOT_SETTING.serviceName) && isUserHasTokens(user, BOT_SETTING.serviceName)) || (user && isUserSuperAdmin(user));
        
         if (!isAllowed) {
-            bot.sendMessage(chatId, "Кончились токены или подписка!");
+            bot.sendMessage(chatId, ERROR_MSG.noTokkenOrSubscribtion, MENU_OPTIONS);
             return
         } 
-        const settings = getUserSettings(user, "aiMarketing");
+        const settings = getUserSettings(user, BOT_SETTING.serviceName);
 
         if (!settings.model) {
-            bot.sendMessage(chatId, "Не могу загрузить настройки!");
+            bot.sendMessage(chatId, ERROR_MSG.noSettingsProvided, MENU_OPTIONS);
             return 
         }
 
         try {
             const { message, tokens } = await generateMsgToAI(msg.text, settings);
             if (message) {
-                bot.sendMessage(chatId, message);
-                if (typeof user["aiMarketing"].tokens === 'number' && 
-                    !isNaN(user["aiMarketing"].tokens) &&
+                bot.sendMessage(chatId, message, MENU_OPTIONS);
+                if (typeof user[BOT_SETTING.serviceName].tokens === 'number' && 
+                    !isNaN(user[BOT_SETTING.serviceName].tokens) &&
                     typeof tokens === 'number' && !isNaN(tokens)) {
-                        await setTokens(msg.chat.username, "aiMarketing", user["aiMarketing"].tokens - tokens)
+                        await setTokens(msg.chat.username, BOT_SETTING.serviceName, user[BOT_SETTING.serviceName].tokens - tokens)
                 }
                 return
             }
         } catch (e) {
             console.log(e)
             await createLog(String(e), user.telegramID)
-            bot.sendMessage(chatId, "Бот чем-то недоволен!");
+            bot.sendMessage(chatId, ERROR_MSG.generalError, MENU_OPTIONS);
         }
         
         return
@@ -89,7 +108,7 @@ const initTelegramBot = () => {
     bot.on('photo', async (msg) => {
 
         if (!msg.chat.username) {
-            bot.sendMessage(chatId, "Отсутствует имя пользователя");
+            bot.sendMessage(chatId, ERROR_MSG.noUserNameProvided);
             return
         }
         const user = await getUser(msg.chat.username);
@@ -97,12 +116,12 @@ const initTelegramBot = () => {
 
         const fileId = msg.photo[msg.photo.length - 1].file_id;
         const chatId = msg.chat.id;
-        const service = "aiMarketing"
+        const service = BOT_SETTING.serviceName
 
         const isAllowed = (isUserPaid(user, service) && isUserHasTokens(user, service)) || isUserSuperAdmin(user);        
         
         if (!isAllowed) {
-            bot.sendMessage(chatId, "Кончились токены или подписка!");
+            bot.sendMessage(chatId, ERROR_MSG.noTokkenOrSubscribtion, MENU_OPTIONS);
             return 
         }
 
@@ -110,7 +129,7 @@ const initTelegramBot = () => {
             await downloadImg(urlToDownloadPick, fileId);
         } catch (e) {
             console.log(e)
-            bot.sendMessage(chatId, "Ошибка скачивания картинки.");
+            bot.sendMessage(chatId, ERROR_MSG.erorrDownloadingPick, MENU_OPTIONS);
             await createLog(String(e), user.telegramID)
             return
         }
@@ -118,7 +137,8 @@ const initTelegramBot = () => {
         try {
             const { message, tokens } = await sendImageToAI(fileId, msg.caption )
             if (!message) {
-                bot.sendMessage(chatId, "Бот чем-то недоволен!");
+                bot.sendMessage(chatId, ERROR_MSG.generalError, MENU_OPTIONS);
+                await createLog(String(e), user.telegramID)
                 return
             }
             bot.sendMessage(chatId, message);
@@ -131,7 +151,7 @@ const initTelegramBot = () => {
 
         } catch (e) {
             console.log(e)
-            bot.sendMessage(chatId, "Бот чем-то недоволен!");
+            bot.sendMessage(chatId, ERROR_MSG.generalError, MENU_OPTIONS);
             await createLog(String(e), user.telegramID)
             return
         } finally {
@@ -146,10 +166,10 @@ const getUrlToPick = async (msg) => {
     const amoutOfPhotos = msg.photo.length
     const fileId = msg.photo[amoutOfPhotos - 1].file_id;
     const res = await fetch(
-          `https://api.telegram.org/bot${process.env.TELEGRAM_BOT}/getFile?file_id=${fileId}`);
+          `https://api.telegram.org/bot${BOT_SETTING.botToken}/getFile?file_id=${fileId}`);
     const res2 = await res.json();
     const filePath = res2.result.file_path;
-    return `https://api.telegram.org/file/bot${process.env.TELEGRAM_BOT}/${filePath}`;
+    return `https://api.telegram.org/file/bot${BOT_SETTING.botToken}/${filePath}`;
 }
 
 const createUserOrService = async (msg, user) => {
@@ -178,11 +198,57 @@ const createUserOrService = async (msg, user) => {
 
     } else if (!user.aiMarketing) {
         try {
-            await addServiceToUser(msg.chat.username, "aiMarketing", aiMarketingData)
+            await addServiceToUser(msg.chat.username, BOT_SETTING.serviceName, aiMarketingData)
         } catch (e) {
             await createLog(String(e), msg.chat.username)
             throw new Error(e)
         }
+    }
+}
+
+
+const isSystemMsg = value => {
+    return Object.values(SYSTEM_MSG).includes(value);
+}
+
+/**
+ * @param {string} msg - The incoming message to evaluate.
+ * @param {User} user - The user object containing user-specific data.
+ * @returns {Promise<Object>} A promise that resolves to an object containing the response message.
+ * @property {string} value - The response message to be sent.
+ * @property {boolean} isHTML - Indicates whether the response message should be parsed as HTML.
+ */
+const getMenuMsgsResponse = async (msg, user) => {
+    if (msg === SYSTEM_MSG.start) {
+        return { value: 'Добро пожаловать!', isHTML: false }
+    }
+    
+    if (msg === SYSTEM_MSG.logs && user && isUserSuperAdmin(user)) {
+        try {
+            const logs = await getLogs(10)
+            const formattedLogs = logs.map(log => {
+                return `Telegram ID: ${log.telegramID || "Unknown"}, Created At: ${new Date(log.createdAt).toISOString()}, Error: ${log.errorMsg || "No error message"}`;
+            }).join("\n");
+            if (!formattedLogs) {
+                return { value: ERROR_MSG.noNewLogs, isHTML: false } 
+            }
+            return { value: formattedLogs, isHTML: false }
+        } catch (e) {
+            await createLog(String(e), user.telegramID)
+            return { value: ERROR_MSG.errorGettingLogs, isHTML: false }
+        }
+    }
+
+    if (msg === SYSTEM_MSG.settings) {
+        return { value: "Настройки доступны по <a href='siaskov.com'>одноразовой ссылке</a>. Перейдите для настройки бота.", isHTML: true }
+    }
+
+    if (msg === SYSTEM_MSG.statistics) {
+        return { value: `<b>Статистика по боту</b>
+⭐ Осталось токенов: <b>${user[BOT_SETTING.serviceName].tokens}</b>
+📆 Подписка кончится: <b>${beatifyDate(user[BOT_SETTING.serviceName].paidUntil)}</b>
+🌡 Температура запросов: <b>${user[BOT_SETTING.serviceName].temperature}</b>
+🐕 Модель ИИ: <b>${MODELS[user[BOT_SETTING.serviceName].currentModel]}</b>`, isHTML: true }
     }
 }
 

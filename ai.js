@@ -51,4 +51,4 @@ const sendPicToAI = (prompt) => {
     })
 }
 
-module.exports = { sendMessageToAI, sendPicToAI };
+module.exports = { sendMessageToAI, sendPicToAI, MODELS };
