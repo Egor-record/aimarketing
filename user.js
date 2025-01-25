@@ -27,14 +27,14 @@ const isUserSuperAdmin = (user) => {
 }
 
 const isUserHasTokens =  (user, service) => {
-    if (!user[service]) {
+    if (!user || !user[service]) {
         return false;
     }
     return user[service].tokens > 0
 }
 
 const isUserPaid = (user, service) => {
-    if (!user[service]) {
+    if (!user || !user[service]) {
         return false;
     }
 

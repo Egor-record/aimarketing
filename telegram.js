@@ -2,7 +2,7 @@ require('dotenv').config();
 const fetch = require('node-fetch');
 const TelegramBot = require('node-telegram-bot-api');
 const { generateMsgToAI, downloadImg, sendImageToAI, deleteImg } = require('./processing.js');
-const { getUser, createUser, addServiceToUser, setTokens } = require('./db.js')
+const { getUser, createUser, addServiceToUser, setTokens, createLog, getLogs } = require('./db.js')
 const { isUserPaid, isUserHasTokens, isUserSuperAdmin, getUserSettings } = require('./user.js')
 
 
@@ -14,13 +14,44 @@ const initTelegramBot = () => {
             return 
         }
         const chatId = msg.chat.id;
+
+        if (!msg.chat.username) {
+            bot.sendMessage(chatId, "Отсутствует имя пользователя.");
+            return
+        }
+
         const user = await getUser(msg.chat.username);
-        await createUserOrService(msg, user)
+        try {
+            await createUserOrService(msg, user)
+        } catch (e) {
+            bot.sendMessage(chatId, "Ошибка в создании пользователя.");
+            return
+        }
+
             
         if (msg.text === '/start') {
             bot.sendMessage(chatId, "Добро пожаловать!");
             return
-        } 
+        }
+        
+        if (msg.text === '/logs' && user && isUserSuperAdmin(user)) {
+            try {
+                const logs = await getLogs(10)
+                const formattedLogs = logs.map(log => {
+                    return `Telegram ID: ${log.telegramID || "Unknown"}, Created At: ${new Date(log.createdAt).toISOString()}, Error: ${log.errorMsg || "No error message"}`;
+                }).join("\n");
+                if (!formattedLogs) {
+                    bot.sendMessage(chatId, "Нет новых логов");
+                    return 
+                }
+                bot.sendMessage(chatId, formattedLogs);
+                return
+            } catch (e) {
+                await createLog(String(e), user.telegramID)
+                bot.sendMessage(chatId, "Ошибка в получении логов");
+                return
+            }
+        }
             
         const isAllowed = (isUserPaid(user, "aiMarketing") && isUserHasTokens(user, "aiMarketing")) || (user && isUserSuperAdmin(user));
        
@@ -48,6 +79,7 @@ const initTelegramBot = () => {
             }
         } catch (e) {
             console.log(e)
+            await createLog(String(e), user.telegramID)
             bot.sendMessage(chatId, "Бот чем-то недоволен!");
         }
         
@@ -55,8 +87,12 @@ const initTelegramBot = () => {
     });
 
     bot.on('photo', async (msg) => {
-        const user = await getUser(msg.chat.username);
 
+        if (!msg.chat.username) {
+            bot.sendMessage(chatId, "Отсутствует имя пользователя");
+            return
+        }
+        const user = await getUser(msg.chat.username);
         const urlToDownloadPick = await getUrlToPick(msg)
 
         const fileId = msg.photo[msg.photo.length - 1].file_id;
@@ -75,6 +111,7 @@ const initTelegramBot = () => {
         } catch (e) {
             console.log(e)
             bot.sendMessage(chatId, "Ошибка скачивания картинки.");
+            await createLog(String(e), user.telegramID)
             return
         }
 
@@ -95,6 +132,7 @@ const initTelegramBot = () => {
         } catch (e) {
             console.log(e)
             bot.sendMessage(chatId, "Бот чем-то недоволен!");
+            await createLog(String(e), user.telegramID)
             return
         } finally {
             deleteImg(fileId);
@@ -126,14 +164,25 @@ const createUserOrService = async (msg, user) => {
         messages: []
     }
     if (!user) {
-        await createUser({
-            telegramID: msg.chat.username,
-            role: 3,
-            createData: new Date(),
-            aiMarketing: aiMarketingData
-        })
-    } else if (!user.aiMarketing){
-        await addServiceToUser(msg.chat.username, "aiMarketing", aiMarketingData)
+        try {
+            await createUser({
+                telegramID: msg.chat.username,
+                role: 3,
+                createData: new Date(),
+                aiMarketing: aiMarketingData
+            })
+        } catch (e) {
+            await createLog(String(e), msg.chat.username)
+            throw new Error(e)
+        }
+
+    } else if (!user.aiMarketing) {
+        try {
+            await addServiceToUser(msg.chat.username, "aiMarketing", aiMarketingData)
+        } catch (e) {
+            await createLog(String(e), msg.chat.username)
+            throw new Error(e)
+        }
     }
 }
 

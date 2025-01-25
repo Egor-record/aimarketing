@@ -3,6 +3,7 @@ const request = require('request');
 const fs = require('fs');
 const { encode } = require("gpt-tokenizer");
 const { sendMessageToAI, sendPicToAI } = require('./ai.js');
+const { createLog } = require('./db.js')
 
 const MAX_LENGTH = 500;
 
@@ -21,6 +22,7 @@ const generateMsgToAI = async (msgText, settings) => {
         response = await sendMessageToAI(messages, settings)
     } catch (e) {
         console.log(e);
+        await createLog(String(e))
         return { message: "Бот пока занят и не отвечает. Но мы работаем над этим.", tokens: tokensUsed }
     }
     tokensUsed += countTokens([{content: response}])
@@ -74,6 +76,7 @@ const sendImageToAI = async (fileId, msgText) => {
         response = await sendPicToAI(messages)
     } catch (e) {
         console.log(e);
+        await createLog(String(e))
         return { message: "Бот пока занят и не отвечает. Но мы работаем над этим.", tokens: tokensUsed }
     }
 
@@ -87,12 +90,14 @@ const isLengthValid = (msg) => {
 
 const deleteImg = (fileId) => {
     const pathPicFolder = path.join(__dirname, `/pictures/${fileId}.jpg`)
-    fs.unlink(pathPicFolder, (err) => {
+    fs.unlink(pathPicFolder, async (err) => {
         if (err) {
             if (err.code === 'ENOENT') {
                 console.error('File not found, unable to delete:', pathPicFolder);
+                await createLog('File not found, unable to delete: ' + pathPicFolder)
             } else {
                 console.error('Error deleting file:', err);
+                await createLog('Error deleting file: ' + err)
             }
         } else {
             console.log('File successfully deleted:', pathPicFolder);

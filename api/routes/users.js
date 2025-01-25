@@ -1,6 +1,6 @@
 
 const express = require('express');
-const { getAllUsers, setTokens, setPaidUntil } = require('../../db');
+const { getAllUsers, setTokens, setPaidUntil, createLog } = require('../../db');
 
 
 const router = express.Router();
@@ -23,6 +23,7 @@ router.put('/users/:id/tokens', async (req, res) => {
     await setTokens(telegramID, service, tokens)
   } catch (e) {
     console.log(e)
+    await createLog(String(e), telegramID)
     return res.status(500).json({ message: 'Error' });
   }
 
@@ -43,6 +44,7 @@ router.put('/users/:id/paidUntil', async (req, res) => {
     await setPaidUntil(telegramID, service, paidUntil)
   } catch (e) {
     console.log(e)
+    await createLog(String(e), telegramID)
     return res.status(500).json({ message: 'Error' });
   }
   

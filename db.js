@@ -62,22 +62,48 @@ const createUser = async (user) => {
     try {
         return await collection.insertOne(data);
     } catch (e) {
+        await createLog(String(e), telegramID)
+        return false
+    }
+}
+
+const createLog = async (errorMsg, telegramID) => {
+    if (!db) { return false }
+    let collection = await db.collection("Logs");
+    
+    const data = {
+        telegramID : telegramID || "Unknow telegramID",
+        createdAt: new Date(),
+        errorMsg: errorMsg
+    };
+    try {
+        return await collection.insertOne(data);
+    } catch (e) {
         console.log(e)
         return false
     }
 }
 
+const getLogs = async (numberOfLogs) => {
+    let collection = await db.collection("Logs");
+    const logs = await collection
+        .find({})
+        .sort({ createdAt: -1 }) 
+        .limit(numberOfLogs)
+        .toArray();
+    return logs;
+}
+
 const getAllUsers = async () => {
-    let collection = await db.collection("Users");
+    const collection = await db.collection("Users");
     const users = await collection.find({}).toArray();
     return users;
 }
 
-
-
 const addServiceToUser = async (telegramID, service, val) => {
     const user = await getUser(telegramID);
-    if (!user[service]) {
+    const collection = await db.collection("Users");
+    if (user && !user[service]) {
         const result = await collection.updateOne(
             { telegramID },
             { $set: { [service]: val } }
@@ -114,4 +140,16 @@ process.on('SIGINT', async () => {
     process.exit(0);
 });
 
-module.exports = { connectDB, createUser, addServiceToUser, isUserHasService, getUser, getAllUsers, getAdmin, setTokens, setPaidUntil };
+module.exports = { 
+    connectDB, 
+    createUser, 
+    addServiceToUser, 
+    isUserHasService, 
+    getUser, 
+    getAllUsers, 
+    getAdmin, 
+    setTokens, 
+    setPaidUntil, 
+    createLog, 
+    getLogs 
+};
