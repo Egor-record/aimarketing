@@ -247,6 +247,7 @@ const getMenuMsgsResponse = async (msg, user) => {
         return { value: `<b>Статистика по боту</b>
 ⭐ Осталось токенов: <b>${user[BOT_SETTING.serviceName].tokens}</b>
 📆 Подписка кончится: <b>${beatifyDate(user[BOT_SETTING.serviceName].paidUntil)}</b>
+
 <b>Настройки</b>
 🌡 Температура запросов: <b>${user[BOT_SETTING.serviceName].temperature}</b>
 🐕 Модель ИИ: <b>${MODELS[user[BOT_SETTING.serviceName].currentModel]}</b>`, isHTML: true }
