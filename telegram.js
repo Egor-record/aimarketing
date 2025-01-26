@@ -13,8 +13,8 @@ const BOT_SETTING = {
 }
 
 const SYSTEM_MSG = {
-    statistics: 'Статистика и настройки',
-    settings: 'Изменить настройки',
+    statistics: '/statistics',
+    settings: '/settings',
     start: '/start',
     logs: '/logs'
 }
@@ -45,12 +45,12 @@ const initTelegramBot = () => {
     bot.on('message', async (msg) => {
         const chatId = msg.chat.id;
         if (!msg.text) {
-            bot.sendMessage(chatId, ERROR_MSG.onlyTextOrPickAllowed, MENU_OPTIONS);
+            bot.sendMessage(chatId, ERROR_MSG.onlyTextOrPickAllowed);
             return 
         }
 
         if (!msg.chat.username) {
-            bot.sendMessage(chatId, ERROR_MSG.noUserNameProvided, MENU_OPTIONS);
+            bot.sendMessage(chatId, ERROR_MSG.noUserNameProvided);
             return
         }
 
@@ -58,7 +58,7 @@ const initTelegramBot = () => {
         try {
             await createUserOrService(msg, user)
         } catch (e) {
-            bot.sendMessage(chatId, ERROR_MSG.userCreatingError, MENU_OPTIONS);
+            bot.sendMessage(chatId, ERROR_MSG.userCreatingError);
             return
         }
 
@@ -68,20 +68,20 @@ const initTelegramBot = () => {
                 bot.sendMessage(chatId, response.value, { parse_mode: response.isHTML ? 'HTML' : null }); 
                 return
             }
-            bot.sendMessage(chatId, ERROR_MSG.systemMsgHandlingError, MENU_OPTIONS);
+            bot.sendMessage(chatId, ERROR_MSG.systemMsgHandlingError);
             return  
         }
     
         const isAllowed = (isUserPaid(user, BOT_SETTING.serviceName) && isUserHasTokens(user, BOT_SETTING.serviceName)) || (user && isUserSuperAdmin(user));
        
         if (!isAllowed) {
-            bot.sendMessage(chatId, ERROR_MSG.noTokkenOrSubscribtion, MENU_OPTIONS);
+            bot.sendMessage(chatId, ERROR_MSG.noTokkenOrSubscribtion);
             return
         } 
         const settings = getUserSettings(user, BOT_SETTING.serviceName);
 
         if (!settings.model) {
-            bot.sendMessage(chatId, ERROR_MSG.noSettingsProvided, MENU_OPTIONS);
+            bot.sendMessage(chatId, ERROR_MSG.noSettingsProvided);
             return 
         }
 
@@ -99,7 +99,7 @@ const initTelegramBot = () => {
         } catch (e) {
             console.log(e)
             await createLog(String(e), user.telegramID)
-            bot.sendMessage(chatId, ERROR_MSG.generalError, MENU_OPTIONS);
+            bot.sendMessage(chatId, ERROR_MSG.generalError);
         }
         
         return
@@ -121,7 +121,7 @@ const initTelegramBot = () => {
         const isAllowed = (isUserPaid(user, service) && isUserHasTokens(user, service)) || isUserSuperAdmin(user);        
         
         if (!isAllowed) {
-            bot.sendMessage(chatId, ERROR_MSG.noTokkenOrSubscribtion, MENU_OPTIONS);
+            bot.sendMessage(chatId, ERROR_MSG.noTokkenOrSubscribtion);
             return 
         }
 
@@ -129,7 +129,7 @@ const initTelegramBot = () => {
             await downloadImg(urlToDownloadPick, fileId);
         } catch (e) {
             console.log(e)
-            bot.sendMessage(chatId, ERROR_MSG.erorrDownloadingPick, MENU_OPTIONS);
+            bot.sendMessage(chatId, ERROR_MSG.erorrDownloadingPick);
             await createLog(String(e), user.telegramID)
             return
         }
@@ -137,7 +137,7 @@ const initTelegramBot = () => {
         try {
             const { message, tokens } = await sendImageToAI(fileId, msg.caption )
             if (!message) {
-                bot.sendMessage(chatId, ERROR_MSG.generalError, MENU_OPTIONS);
+                bot.sendMessage(chatId, ERROR_MSG.generalError);
                 await createLog(String(e), user.telegramID)
                 return
             }
@@ -151,7 +151,7 @@ const initTelegramBot = () => {
 
         } catch (e) {
             console.log(e)
-            bot.sendMessage(chatId, ERROR_MSG.generalError, MENU_OPTIONS);
+            bot.sendMessage(chatId, ERROR_MSG.generalError);
             await createLog(String(e), user.telegramID)
             return
         } finally {
