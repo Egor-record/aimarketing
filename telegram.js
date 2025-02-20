@@ -1,7 +1,7 @@
 require('dotenv').config();
-const fetch = require('node-fetch');
+
 const TelegramBot = require('node-telegram-bot-api');
-const { generateMsgToAI, downloadImg, sendImageToAI, deleteImg, beatifyDate } = require('./processing.js');
+const { generateMsgToAI, downloadImg, sendImageToAI, deleteImg, beatifyDate, getUrlToPick, getSettingsID } = require('./processing.js');
 const { getUser, createUser, addServiceToUser, setTokens, createLog, getLogs } = require('./db.js')
 const { isUserPaid, isUserHasTokens, isUserSuperAdmin, getUserSettings } = require('./user.js')
 const { MODELS } = require('./ai.js')
@@ -29,7 +29,8 @@ const ERROR_MSG = {
     generalError: "Ошибка в генерации сообщения",
     erorrDownloadingPick: "Ошибка скачивания картинки.",
     noNewLogs: "Нет новых логов",
-    errorGettingLogs: "Ошибка в получении логов"
+    errorGettingLogs: "Ошибка в получении логов",
+    errorGettingSettingsLink: "Ошибка генерации настроек"
 }
 
 const MENU_OPTIONS = {
@@ -88,7 +89,7 @@ const initTelegramBot = () => {
         try {
             const { message, tokens } = await generateMsgToAI(msg.text, settings);
             if (message) {
-                bot.sendMessage(chatId, message, MENU_OPTIONS);
+                bot.sendMessage(chatId, message);
                 if (typeof user[BOT_SETTING.serviceName].tokens === 'number' && 
                     !isNaN(user[BOT_SETTING.serviceName].tokens) &&
                     typeof tokens === 'number' && !isNaN(tokens)) {
@@ -162,15 +163,7 @@ const initTelegramBot = () => {
     console.log('Telegram bot initialized');
 }
 
-const getUrlToPick = async (msg) => {
-    const amoutOfPhotos = msg.photo.length
-    const fileId = msg.photo[amoutOfPhotos - 1].file_id;
-    const res = await fetch(
-          `https://api.telegram.org/bot${BOT_SETTING.botToken}/getFile?file_id=${fileId}`);
-    const res2 = await res.json();
-    const filePath = res2.result.file_path;
-    return `https://api.telegram.org/file/bot${BOT_SETTING.botToken}/${filePath}`;
-}
+
 
 const createUserOrService = async (msg, user) => {
     const aiMarketingData = {
@@ -240,7 +233,11 @@ const getMenuMsgsResponse = async (msg, user) => {
     }
 
     if (msg === SYSTEM_MSG.settings) {
-        return { value: "Настройки доступны по <a href='siaskov.com'>одноразовой ссылке</a>. Перейдите для настройки бота.", isHTML: true }
+        const linkID = await getSettingsID(user.telegramID, BOT_SETTING.serviceName)
+        if (!linkID) {
+            return { value: ERROR_MSG.errorGettingSettingsLink, isHTML: false }
+        }
+        return { value: `Настройки доступны по <a href="${process.env.SITE_URL}/settings/edit?linkID=${linkID}&telegramID=${user.telegramID}&service=${BOT_SETTING.serviceName}">одноразовой ссылке</a>. Перейдите для настройки бота.`, isHTML: true }
     }
 
     if (msg === SYSTEM_MSG.statistics) {

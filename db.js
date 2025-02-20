@@ -1,4 +1,5 @@
 require('dotenv').config();
+const { randomUUID } = require('crypto');
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const uri = process.env.DB_URI;
 const isProd = process.env.NODE_ENV === 'production';
@@ -134,6 +135,47 @@ const updateCollection = async (telegramID, service, changingValue, value) => {
     return
 }
 
+const createSettingsLink = async (telegramID, service) => {
+    const collection = await db.collection("SettingsLinks");
+    const id = randomUUID();
+    const data = {
+        telegramID : telegramID,
+        createdAt: new Date(),
+        linkID: id,
+        service: service
+    };
+    try {
+        await collection.insertOne(data);
+        return { success: true, id: id };
+    } catch (e) {
+        await createLog(e, telegramID)
+        return { success: false, id: null };
+    }
+}
+
+const getSettingsLinkByTelegramID = async (telegramID, service) => {
+    let collection = await db.collection("SettingsLinks");
+    const link = await collection.findOne({ telegramID: telegramID, service: service });
+    return link;
+}
+
+const getSettingsLinkByID = async (telegramID, id, service) => {
+    let collection = await db.collection("SettingsLinks");
+    const link = await collection.findOne({ telegramID: telegramID, service: service, linkID:  id });
+    return link;
+}
+
+const deleteSettingsLink = async (telegramID, service) => {
+    try {
+        let collection = await db.collection("SettingsLinks");
+        const result = await collection.deleteOne({ telegramID: telegramID, service: service });
+        return result.deletedCount > 0
+    } catch (error) {
+        await createLog(error, telegramID)
+        return false;
+    }
+}
+
 process.on('SIGINT', async () => {
     console.log('Closing MongoDB connection');
     await client.close();
@@ -151,5 +193,9 @@ module.exports = {
     setTokens, 
     setPaidUntil, 
     createLog, 
-    getLogs 
+    getLogs,
+    createSettingsLink,
+    getSettingsLinkByTelegramID,
+    deleteSettingsLink,
+    getSettingsLinkByID
 };

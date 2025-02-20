@@ -1,11 +1,17 @@
 const path = require('path');
 const request = require('request');
 const fs = require('fs');
+const fetch = require('node-fetch');
 const { format } = require('date-fns');
 const { ru } = require('date-fns/locale/ru');
 const { encode } = require("gpt-tokenizer");
 const { sendMessageToAI, sendPicToAI } = require('./ai.js');
-const { createLog } = require('./db.js')
+const { createLog, 
+        createSettingsLink, 
+        getSettingsLinkByTelegramID, 
+        deleteSettingsLink, 
+        getSettingsLinkByID 
+    } = require('./db.js')
 
 const MAX_LENGTH = 500;
 
@@ -136,4 +142,29 @@ const beatifyDate = (originalDate) => {
     return format(date, 'dd MMMM yyyy года', { locale: ru });
 }
 
-module.exports = { generateMsgToAI, downloadImg, deleteImg, sendImageToAI, beatifyDate };
+const getSettingsID = async (telegramID, service) => {
+    let link = await getSettingsLinkByTelegramID(telegramID, service)
+    if (link) {
+      await deleteSettingsLink(telegramID, service)
+    }
+    link =  await createSettingsLink(telegramID, service)
+    if (link.success) return link.id
+    return false
+}
+
+const isSettingLinkValid = async ( telegramID, id, service) => {
+    const link = await getSettingsLinkByID(telegramID, id, service)
+    return !!link
+}
+
+const getUrlToPick = async (msg) => {
+    const amoutOfPhotos = msg.photo.length
+    const fileId = msg.photo[amoutOfPhotos - 1].file_id;
+    const res = await fetch(
+          `https://api.telegram.org/bot${BOT_SETTING.botToken}/getFile?file_id=${fileId}`);
+    const res2 = await res.json();
+    const filePath = res2.result.file_path;
+    return `https://api.telegram.org/file/bot${BOT_SETTING.botToken}/${filePath}`;
+}
+
+module.exports = { generateMsgToAI, downloadImg, deleteImg, sendImageToAI, beatifyDate, getUrlToPick, getSettingsID, isSettingLinkValid };
