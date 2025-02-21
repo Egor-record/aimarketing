@@ -154,7 +154,7 @@ const getSettingsID = async (telegramID, service) => {
 
 const isSettingLinkValid = async ( telegramID, id, service) => {
     const link = await getSettingsLinkByID(telegramID, id, service)
-    if (!link || link.createdAt) return false
+    if (!link || !link.createdAt) return false
     if (new Date(link.createdAt).getTime() < Date.now() - 5 * 60 * 1000) {
         return false
     }

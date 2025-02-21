@@ -26,7 +26,8 @@ router.get('/edit', async (req, res) => {
         isOwnKey: user[service].isUsingOwnKey, 
         key: 3452,
         keepHistory: true,
-        tokens: user[service].tokens
+        tokens: user[service].tokens,
+        secretKey: "",
       });
   }
 
