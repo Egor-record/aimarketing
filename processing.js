@@ -5,22 +5,28 @@ const fetch = require('node-fetch');
 const { format } = require('date-fns');
 const { ru } = require('date-fns/locale/ru');
 const { encode } = require("gpt-tokenizer");
-const { sendMessageToAI, sendPicToAI } = require('./ai.js');
+const { sendMessageToAI, sendPicToAI, sendMessageToAssistant } = require('./ai.js');
 const { createLog, 
         createSettingsLink, 
         getSettingsLinkByTelegramID, 
         deleteSettingsLink, 
         getSettingsLinkByID 
-    } = require('./db.js')
+    } = require('./db.js');
+const { ERROR_MSG, ROLES } = require('./consts.js');
 
 const MAX_LENGTH = 500;
+const MAX_RESPONSE_LENGTH = 200;
+
+const PROMPTS = {
+    systemMsg: `You are a friendly and helpful assistant. Respond as concisely as possible. Try to keep your answers brief and no longer than ${MAX_RESPONSE_LENGTH} characters.`
+}
 
 const generateMsgToAI = async (msgText, settings) => {
-    if (!isLengthValid(msgText)) return { message: 'Слишком длинное сообщение!', tokens: 0 }
+    if (!isLengthValid(msgText)) return { message: ERROR_MSG.tooLongMsg, tokens: 0 }
 
     const messages = [{
         content: msgText,
-        role:  "user"
+        role:  ROLES.user
     }]
 
     let tokensUsed = countTokens(messages)
@@ -31,11 +37,33 @@ const generateMsgToAI = async (msgText, settings) => {
     } catch (e) {
         console.log(e);
         await createLog(String(e))
-        return { message: "Бот пока занят и не отвечает. Но мы работаем над этим.", tokens: tokensUsed }
+        return { message: ERROR_MSG.botIsNotResponding, tokens: tokensUsed }
     }
     tokensUsed += countTokens([{content: response}])
     return { message: response, tokens: tokensUsed }
 
+}
+
+const generateMsgToAssistent = async (msgText, settings) => {
+    if (!isLengthValid(msgText)) return { message: ERROR_MSG.tooLongMsg, tokens: 0 }
+
+    const messages = [{
+        content: msgText,
+        role:  ROLES.user
+    }]
+
+    let tokensUsed = countTokens(messages)
+    let response = "";
+
+    try {
+        response = await sendMessageToAssistant(messages, settings)
+    } catch (e) {
+        console.log(e);
+        await createLog(String(e))
+        return { message: ERROR_MSG.botIsNotResponding, tokens: tokensUsed }
+    }
+    tokensUsed += countTokens([{content: response}])
+    return { message: response, tokens: tokensUsed }
 }
 
 const downloadImg = (url, fileId) => {
@@ -57,15 +85,15 @@ const downloadImg = (url, fileId) => {
 
 const sendImageToAI = async (fileId, msgText) => {
 
-    if (!isLengthValid(msgText)) return { message: 'Слишком длинное описание к картинке!', tokens: 0 }
+    if (!isLengthValid(msgText)) return { message: ERROR_MSG.tooLongDescribeMsg, tokens: 0 }
 
     const base64Image = convertIMGtoBase64(path.join(__dirname, `/pictures/${fileId}.jpg`));
 
     const messages = [{
-        role: "system", 
-        content: "You are a friendly and helpful assistant. Respond as concisely as possible. Try to keep your answers brief and no longer than 200 characters."
+        role: ROLES.system, 
+        content: PROMPTS.systemMsg
     },{
-        role: "user",
+        role: ROLES.user,
         content: [
             { type: "text", text: msgText },
             {
@@ -85,7 +113,7 @@ const sendImageToAI = async (fileId, msgText) => {
     } catch (e) {
         console.log(e);
         await createLog(String(e))
-        return { message: "Бот пока занят и не отвечает. Но мы работаем над этим.", tokens: tokensUsed }
+        return { message: ERROR_MSG.botIsNotResponding, tokens: tokensUsed }
     }
 
     tokensUsed += countTokens([{content: response}])
@@ -155,9 +183,9 @@ const getSettingsID = async (telegramID, service) => {
 const isSettingLinkValid = async ( telegramID, id, service) => {
     const link = await getSettingsLinkByID(telegramID, id, service)
     if (!link || !link.createdAt) return false
-    if (new Date(link.createdAt).getTime() < Date.now() - 5 * 60 * 1000) {
-        return false
-    }
+    // if (new Date(link.createdAt).getTime() < Date.now() - 5 * 60 * 1000) {
+    //     return false
+    // }
     return !!link
 }
 
@@ -171,4 +199,14 @@ const getUrlToPick = async (msg) => {
     return `https://api.telegram.org/file/bot${BOT_SETTING.botToken}/${filePath}`;
 }
 
-module.exports = { generateMsgToAI, downloadImg, deleteImg, sendImageToAI, beatifyDate, getUrlToPick, getSettingsID, isSettingLinkValid };
+module.exports = { 
+    generateMsgToAI, 
+    downloadImg, 
+    deleteImg, 
+    sendImageToAI, 
+    beatifyDate, 
+    getUrlToPick, 
+    getSettingsID, 
+    isSettingLinkValid,
+    generateMsgToAssistent
+};

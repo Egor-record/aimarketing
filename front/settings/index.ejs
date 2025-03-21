@@ -111,17 +111,14 @@
                             id="flexSwitchCheckDefault">
                         <label class="form-check-label" for="flexSwitchCheckDefault">Using own key</label>
                         <transition name="fade">
-                            <div v-show="usingKey" class="mb-3 mt-2 needs-validation">
+                            <div v-show="usingKey" :class="isValidationShowen ? 'was-validated' : ''" class="mb-3 mt-2 needs-validation" >
                                 <label for="secret_key" class="form-label">Secret Key</label>
                                 <input v-model="secretKey" type="text" class="form-control" id="secret_key" placeholder="Open AI Secret Key">
-                                <div class="invalid-feedback">
+                                <div v-show="secretKey && !isSecretKeyValid && isValidationShowen" class="invalid-feedback">
                                     Please provide a valid key.
                                 </div>
-                                <div class="valid-feedback">
-                                    Key saved.
-                                </div>
-                                <small class="mt-2">You won't be able to see secret key once you press save</small>
-                                <button @click="saveSecretKey" class="btn btn-success mt-3">Save</button>
+                                <small v-if="!secretKey" class="mt-2">You won't be able to see secret key once you press save</small><br>
+                                <button :disabled="!secretKey" @click="saveSecretKey" class="btn btn-success mt-3">Save</button>
                             </div>  
                         </transition>                    
                     </div>
@@ -144,6 +141,8 @@
                 const secretKey = ref(viewData.secretKey);
                 const keepHistory = ref(viewData.keepHistory);
                 const AiModel = ref("");
+                const isSecretKeyValid = ref(false);
+                const isValidationShowen = ref(false);
 
                 const fetchModels = async () => {
                     try {
@@ -173,7 +172,10 @@
                 }
 
                 const saveSecretKey = async () => {
-                    await updateValue(secretKey, secretKey.value)
+                    isValidationShowen.value = true;
+                    isSecretKeyValid.value = !!secretKey.value?.trim()
+                
+                    //await updateValue(secretKey, secretKey.value)
                 }
 
                 const updateValue = async (name, value) => {
@@ -198,9 +200,12 @@
                     usingKey,
                     secretKey,
                     keepHistory,
+                    isSecretKeyValid,
+                    isValidationShowen,
                     updateTemperature,
                     updateModel,
-                    updateMaxLength
+                    updateMaxLength,
+                    saveSecretKey
                 };
             }
         }).mount('#app');

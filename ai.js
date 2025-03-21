@@ -1,6 +1,7 @@
 require('dotenv').config()
 const fs = require('fs');
 const OpenAI = require("openai");
+const { SETTINGS, ROLES } = require('./consts')
 
 const MODELS = {
     1: 'gpt-3.5-turbo-0125',
@@ -10,7 +11,7 @@ const MODELS = {
 const MAX_TOKENS = 500;
 
 const sendMessageToAI = (messages, settings) => {
-    const ai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const ai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY_TEST });
     const { temperature, model  } = settings
     const request = {
         model: MODELS[model],
@@ -28,6 +29,48 @@ const sendMessageToAI = (messages, settings) => {
                 reject(error);
         });
     });
+}
+
+const sendMessageToAssistant = async (messages, settings) => {    
+    if (!SETTINGS[settings.serviceName]?.assistantId) {
+        throw new Error("no assistant_id provided")
+    }
+    const openai = new OpenAI({
+      apiKey: SETTINGS[settings.serviceName]?.aiToken, 
+    });
+    const thread = await openai.beta.threads.create();
+
+    try {
+        await openai.beta.threads.messages.create(thread.id, messages[0]);
+    } catch (e) {
+        throw new Error("error opening threads")
+    }
+    let run;
+    try {
+        run = await openai.beta.threads.runs.create(thread.id, {
+            assistant_id: SETTINGS[settings.serviceName]?.assistantId,
+        });
+    } catch (e) {
+        throw new Error("error running threads:", e)
+    }
+
+    let runStatus, responseMessages;
+    try { 
+        do {
+            runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
+          } while (runStatus.status !== "completed");
+      
+        responseMessages = await openai.beta.threads.messages.list(thread.id);
+    } catch (e) {
+        throw new Error("error retrieving threads:", e)
+    }
+    
+    try {
+        return responseMessages.data[0].content[0].text.value
+    } catch (e) {
+        throw new Error("Error getting message:", e)
+    }
+    
 }
 
 const sendPicToAI = (prompt) => {
@@ -51,4 +94,4 @@ const sendPicToAI = (prompt) => {
     })
 }
 
-module.exports = { sendMessageToAI, sendPicToAI, MODELS };
+module.exports = { sendMessageToAI, sendPicToAI, sendMessageToAssistant, MODELS };
