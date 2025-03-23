@@ -59,7 +59,7 @@ const initListeners = bots => {
                 try {
                     const defaultData = {
                         chatID: msg.chat.id,
-                        paidUntil: new Date(),
+                        paidUntil: SETTINGS[serviceName].paidUntil,
                         isUsingOwnKey: false,
                         currentModel: SETTINGS[serviceName].currentModel,
                         temperature: SETTINGS[serviceName].temperature,

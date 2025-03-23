@@ -14,8 +14,8 @@ const { createLog,
     } = require('./db.js');
 const { ERROR_MSG, ROLES } = require('./consts.js');
 
-const MAX_LENGTH = 500;
-const MAX_RESPONSE_LENGTH = 200;
+const MAX_LENGTH = 10000;
+const MAX_RESPONSE_LENGTH = 1000;
 
 const PROMPTS = {
     systemMsg: `You are a friendly and helpful assistant. Respond as concisely as possible. Try to keep your answers brief and no longer than ${MAX_RESPONSE_LENGTH} characters.`

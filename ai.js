@@ -8,10 +8,10 @@ const MODELS = {
     2: 'gpt-4o-mini'
 }
 
-const MAX_TOKENS = 500;
+const MAX_TOKENS = 1000;
 
 const sendMessageToAI = (messages, settings) => {
-    const ai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY_TEST });
+    const ai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const { temperature, model  } = settings
     const request = {
         model: MODELS[model],
@@ -64,7 +64,7 @@ const sendMessageToAssistant = async (messages, settings) => {
     } catch (e) {
         throw new Error("error retrieving threads:", e)
     }
-    
+
     try {
         return responseMessages.data[0].content[0].text.value
     } catch (e) {

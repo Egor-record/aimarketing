@@ -8,6 +8,7 @@ const BORIS_SETTING = {
     defaultTokens: 0,
     currentModel: 1,
     temperature: 0,
+    paidUntil: new Date()
 }
 
 const PARTY_SETTING = {
@@ -15,10 +16,11 @@ const PARTY_SETTING = {
     botToken: process.env.TELEGRAM_BOT_PARTY,
     aiToken: process.env.OPENAI_API_KEY_PARTY,
     isPolling: true,
-    defaultTokens: 1000,
+    defaultTokens: 100000,
     currentModel: 1,
     temperature: 0,
-    assistantId: process.env.ASSISTANT_ID_PARTY
+    assistantId: process.env.ASSISTANT_ID_PARTY,
+    paidUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
 }
 
 const MARKETING_SETTING = {
@@ -26,10 +28,11 @@ const MARKETING_SETTING = {
     botToken: process.env.TELEGRAM_BOT_MARKETING,
     aiToken: process.env.OPENAI_API_KEY_PARTY,
     isPolling: true,
-    defaultTokens: 1000,
+    defaultTokens: 100000,
     currentModel: 1,
     temperature: 0,
-    assistantId: process.env.ASSISTANT_ID_PRO_MARKET
+    assistantId: process.env.ASSISTANT_ID_PRO_MARKET,
+    paidUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
 }
 
 const SETTINGS = {
