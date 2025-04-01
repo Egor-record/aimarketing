@@ -3,7 +3,7 @@ require('dotenv').config();
 const TelegramBot = require('node-telegram-bot-api');
 const { generateMsgToAI, generateMsgToAssistent, downloadImg, sendImageToAI, deleteImg, beatifyDate, getUrlToPick, getSettingsID } = require('./processing.js');
 const { getUser, createUser, addServiceToUser, setTokens, createLog, getLogs } = require('./db.js')
-const { isUserPaid, isUserHasTokens, isUserSuperAdmin, getUserSettings } = require('./user.js')
+const { isUserPaid, isUserHasTokens, isUserSuperAdmin, getUserSettings, generateServiceData } = require('./user.js')
 const { MODELS } = require('./ai.js')
 const { BORIS_SETTING, PARTY_SETTING, MARKETING_SETTING, SYSTEM_MSG, ERROR_MSG, SETTINGS } = require('./consts.js')
 
@@ -57,16 +57,7 @@ const initListeners = bots => {
                 }
             } else if (!user[SETTINGS[serviceName].serviceName]) {
                 try {
-                    const defaultData = {
-                        chatID: msg.chat.id,
-                        paidUntil: SETTINGS[serviceName].paidUntil,
-                        isUsingOwnKey: false,
-                        currentModel: SETTINGS[serviceName].currentModel,
-                        temperature: SETTINGS[serviceName].temperature,
-                        tokens: SETTINGS[serviceName].defaultTokens,
-                        payments: [],
-                        messages: []
-                    };
+                    const defaultData = generateServiceData(SETTINGS[serviceName])
                     await addServiceToUser(msg.chat.username, SETTINGS[serviceName].serviceName, defaultData)
                     user[SETTINGS[serviceName].serviceName] = defaultData;
                 } catch (e) {
@@ -92,22 +83,22 @@ const initListeners = bots => {
                 bot.sendMessage(chatId, ERROR_MSG.noTokkenOrSubscribtion);
                 return
             } 
-            const settings = getUserSettings(user, serviceName);
+            const userSettings = getUserSettings(user, serviceName);
     
-            if (!settings.model) {
+            if (!userSettings.model) {
                 bot.sendMessage(chatId, ERROR_MSG.noSettingsProvided);
                 return 
             }
     
             try {
                 let response;
-           
+                userSettings.telegramID = msg.chat.username;
                 if (serviceName === BORIS_SETTING.serviceName) {
-                    settings.serviceName = BORIS_SETTING.serviceName
-                    response = await generateMsgToAI(msg.text, settings);
+                    userSettings.serviceName = BORIS_SETTING.serviceName
+                    response = await generateMsgToAI(msg.text, userSettings);
                 } else {
-                    settings.serviceName = serviceName
-                    response = await generateMsgToAssistent(msg.text, settings);
+                    userSettings.serviceName = serviceName
+                    response = await generateMsgToAssistent(msg.text, userSettings);
                 }
 
                 if (!response) {

@@ -1,7 +1,6 @@
 require('dotenv').config()
-const fs = require('fs');
 const OpenAI = require("openai");
-const { SETTINGS, ROLES } = require('./consts')
+const { SETTINGS } = require('./consts')
 
 const MODELS = {
     1: 'gpt-3.5-turbo-0125',
@@ -12,7 +11,7 @@ const MAX_TOKENS = 1000;
 
 const sendMessageToAI = (messages, settings) => {
     const ai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    const { temperature, model  } = settings
+    const { temperature, model } = settings
     const request = {
         model: MODELS[model],
         temperature: temperature,

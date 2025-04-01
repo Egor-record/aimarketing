@@ -8,7 +8,8 @@ const BORIS_SETTING = {
     defaultTokens: 0,
     currentModel: 1,
     temperature: 0,
-    paidUntil: new Date()
+    paidUntil: new Date(),
+    nMsgsToStore: 0,
 }
 
 const PARTY_SETTING = {
@@ -20,7 +21,8 @@ const PARTY_SETTING = {
     currentModel: 1,
     temperature: 0,
     assistantId: process.env.ASSISTANT_ID_PARTY,
-    paidUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    paidUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    nMsgsToStore: 5,
 }
 
 const MARKETING_SETTING = {
@@ -32,7 +34,8 @@ const MARKETING_SETTING = {
     currentModel: 1,
     temperature: 0,
     assistantId: process.env.ASSISTANT_ID_PRO_MARKET,
-    paidUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    paidUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    nMsgsToStore: 5,
 }
 
 const SETTINGS = {

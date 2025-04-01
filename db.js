@@ -176,6 +176,14 @@ const deleteSettingsLink = async (telegramID, service) => {
     }
 }
 
+const addMessage = async (telegramID, service, msg) => {
+   return await updateCollection(telegramID, service, "messages", msg)
+}
+
+const getMessagesFromDB = async (telegramID, service, numberOfMsgsToGet) => {
+
+}
+
 process.on('SIGINT', async () => {
     console.log('Closing MongoDB connection');
     await client.close();
@@ -197,5 +205,7 @@ module.exports = {
     createSettingsLink,
     getSettingsLinkByTelegramID,
     deleteSettingsLink,
-    getSettingsLinkByID
+    getSettingsLinkByID,
+    addMessage,
+    getMessagesFromDB
 };

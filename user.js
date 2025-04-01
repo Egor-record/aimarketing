@@ -48,9 +48,24 @@ const getUserSettings = (user, service) => {
     const settings = {
         temperature: user[service].temperature > 2 ? 2 : user[service].temperature,
         max_tokens: user[service].max_tokens || 500,
-        model: user[service].model || 1
+        model: user[service].model || 1,
+        nMsgsToStore: user[service].nMsgsToStore || 0
     }
     return settings
 }
 
-module.exports = { isUserAdmin, isUserSuperAdmin, isUserHasTokens, isUserPaid, getUserSettings };
+const generateServiceData = serviceName => {
+    return { 
+        chatID: msg.chat.id,
+        paidUntil: serviceName.paidUntil,
+        isUsingOwnKey: false,
+        currentModel: serviceName.currentModel,
+        temperature: serviceName.temperature,
+        tokens: serviceName.defaultTokens,
+        payments: [],
+        messages: [],
+        nMsgsToStore: serviceName.nMsgsToStore
+    }
+};
+
+module.exports = { isUserAdmin, isUserSuperAdmin, isUserHasTokens, isUserPaid, getUserSettings, generateServiceData };

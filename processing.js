@@ -10,7 +10,9 @@ const { createLog,
         createSettingsLink, 
         getSettingsLinkByTelegramID, 
         deleteSettingsLink, 
-        getSettingsLinkByID 
+        getSettingsLinkByID,
+        addMessage,
+        getMessagesFromDB
     } = require('./db.js');
 const { ERROR_MSG, ROLES } = require('./consts.js');
 
@@ -47,7 +49,10 @@ const generateMsgToAI = async (msgText, settings) => {
 const generateMsgToAssistent = async (msgText, settings) => {
     if (!isLengthValid(msgText)) return { message: ERROR_MSG.tooLongMsg, tokens: 0 }
 
-    const messages = [{
+    const { telegramID, serviceName, nMsgsToStore } = settings;
+    await addMessage(telegramID, serviceName, { content: msgText, role: ROLES.user })
+    const msgsFromHistory = await getMessagesFromDB(telegramID, serviceName, nMsgsToStore)
+    const messages = [...msgsFromHistory, {
         content: msgText,
         role:  ROLES.user
     }]
@@ -183,9 +188,9 @@ const getSettingsID = async (telegramID, service) => {
 const isSettingLinkValid = async ( telegramID, id, service) => {
     const link = await getSettingsLinkByID(telegramID, id, service)
     if (!link || !link.createdAt) return false
-    // if (new Date(link.createdAt).getTime() < Date.now() - 5 * 60 * 1000) {
-    //     return false
-    // }
+    if (new Date(link.createdAt).getTime() < Date.now() - 5 * 60 * 1000) {
+        return false
+    }
     return !!link
 }
 
