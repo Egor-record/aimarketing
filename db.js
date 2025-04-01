@@ -176,12 +176,31 @@ const deleteSettingsLink = async (telegramID, service) => {
     }
 }
 
-const addMessage = async (telegramID, service, msg) => {
-   return await updateCollection(telegramID, service, "messages", msg)
+const addMessage = async (telegramID, service, msg, max_msgs) => {
+    const collection = await db.collection("Users");
+    await collection.updateOne(
+        { telegramID },
+        {
+            $push: {
+                [`${service}.messages`]: {
+                    $each: [msg],
+                    $slice: -max_msgs
+                }
+            }
+        }
+    );
 }
 
 const getMessagesFromDB = async (telegramID, service, numberOfMsgsToGet) => {
-
+    const collection = await db.collection("Users");
+    const user = await collection.findOne(
+        { telegramID: telegramID },
+        { service, "messages" : { $slice: -numberOfMsgsToGet } } 
+    );
+    if (!user) {
+        return [];
+    }
+    return user[service]?.messages || [];
 }
 
 process.on('SIGINT', async () => {

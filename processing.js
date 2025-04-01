@@ -50,8 +50,8 @@ const generateMsgToAssistent = async (msgText, settings) => {
     if (!isLengthValid(msgText)) return { message: ERROR_MSG.tooLongMsg, tokens: 0 }
 
     const { telegramID, serviceName, nMsgsToStore } = settings;
-    await addMessage(telegramID, serviceName, { content: msgText, role: ROLES.user })
-    const msgsFromHistory = await getMessagesFromDB(telegramID, serviceName, nMsgsToStore)
+    const msgsFromHistory = await getMessagesFromDB(telegramID, serviceName, nMsgsToStore - 1)
+    await addMessage(telegramID, serviceName, { content: msgText, role: ROLES.user }, nMsgsToStore)
     const messages = [...msgsFromHistory, {
         content: msgText,
         role:  ROLES.user
@@ -62,6 +62,7 @@ const generateMsgToAssistent = async (msgText, settings) => {
 
     try {
         response = await sendMessageToAssistant(messages, settings)
+        await addMessage(telegramID, serviceName, { content: response, role: ROLES.assistant }, nMsgsToStore)
     } catch (e) {
         console.log(e);
         await createLog(String(e))

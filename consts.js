@@ -71,7 +71,8 @@ const ERROR_MSG = {
 
 const ROLES = {
     user: "user",
-    system: "system"
+    system: "system",
+    assistant: "assistant"
 }
 
 module.exports = { BORIS_SETTING, PARTY_SETTING, SYSTEM_MSG, ERROR_MSG, SETTINGS, ROLES, MARKETING_SETTING };

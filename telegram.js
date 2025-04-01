@@ -84,7 +84,7 @@ const initListeners = bots => {
                 return
             } 
             const userSettings = getUserSettings(user, serviceName);
-    
+            userSettings.chatID = msg.chat.id;
             if (!userSettings.model) {
                 bot.sendMessage(chatId, ERROR_MSG.noSettingsProvided);
                 return 

@@ -56,7 +56,6 @@ const getUserSettings = (user, service) => {
 
 const generateServiceData = serviceName => {
     return { 
-        chatID: msg.chat.id,
         paidUntil: serviceName.paidUntil,
         isUsingOwnKey: false,
         currentModel: serviceName.currentModel,
