@@ -48,6 +48,8 @@ const sendMessageToAssistant = async (messages, settings) => {
     try {
         run = await openai.beta.threads.runs.create(thread.id, {
             assistant_id: SETTINGS[settings.serviceName]?.assistantId,
+            temperature: SETTINGS[settings.serviceName]?.temperature, 
+            top_p: 0,
         });
     } catch (e) {
         throw new Error("error running threads:", e)
@@ -56,8 +58,9 @@ const sendMessageToAssistant = async (messages, settings) => {
     let runStatus, responseMessages;
     try { 
         do {
+            await new Promise((resolve) => setTimeout(resolve, 500));
             runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
-          } while (runStatus.status !== "completed");
+        } while (runStatus.status !== "completed");
       
         responseMessages = await openai.beta.threads.messages.list(thread.id);
     } catch (e) {
